@@ -190,64 +190,34 @@ const legend=a=>`<div class="leg">${a.map(x=>`<span>${x[2]||'<i style="backgroun
 const dash=c=>`<svg width="18" height="8" style="vertical-align:middle;margin-right:4px"><line x1="0" x2="18" y1="4" y2="4" stroke="${c}" stroke-width="2.2" stroke-dasharray="4 3"/></svg>`;
 const line=c=>`<svg width="18" height="8" style="vertical-align:middle;margin-right:4px"><line x1="0" x2="18" y1="4" y2="4" stroke="${c}" stroke-width="2.4"/></svg>`;
 
-// A) Avance diario Lun–Sáb, ventana móvil de 3 semanas
-function chartDaily(){
- const T=hoy(),cm=monOf(T),wk=[-14,-7,0].map(n=>addD(cm,n)),days=[];
- wk.forEach((w,wi)=>{for(let i=0;i<6;i++)days.push({d:addD(w,i),wi,i})});
- days.forEach(x=>{x.fut=x.d>T;x.n=S.sacs.filter(s=>bk(s.fecha)===x.d).length;x.c=S.sacs.filter(s=>cd(s)&&bk(cd(s))===x.d).length;const end=x.i===5?addD(x.d,1):x.d;x.b=S.sacs.filter(s=>s.fecha<=end&&!(cd(s)&&cd(s)<=end)).length});
- const W=800,H=330,L=34,R=36,Tp=24,B=62,gap=16,sw=(W-L-R-2*gap)/18,ph=H-Tp-B;
- const mx=Math.max(3,...days.map(d=>Math.max(d.n,d.c)))+1,mb=Math.max(3,...days.filter(d=>!d.fut).map(d=>d.b))+1;
- const X=k=>L+k*sw+Math.floor(k/6)*gap,yl=v=>Tp+ph*(1-v/mx),yr=v=>Tp+ph*(1-v/mb),bw=sw*.36,cl=v=>Math.max(0,Math.min(mx,v));
- let g='';
- wk.forEach((w,wi)=>{const x0=X(wi*6)-3,ww=sw*6+3;g+=`<rect x="${x0}" y="${Tp-6}" width="${ww}" height="${ph+12}" rx="8" fill="${wi===2?'var(--pri)':'var(--mut)'}" opacity="${wi===2?.12:.06}"/>`+tx(x0+ww/2,H-14,`Sem ${ddmm(w)}–${ddmm(addD(w,5))}${wi===2?' · actual':''}`,'text-anchor="middle" font-size="11" font-weight="700" fill="var(--tx)"')});
- for(let i=0;i<=4;i++){const v=Math.round(mx*i/4),y=yl(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(L-6,y+3,v,'text-anchor="end" font-size="9" fill="var(--mut)"')+tx(W-R+6,yr(mb*i/4)+3,Math.round(mb*i/4),'font-size="9" fill="var(--pri)"')}
- days.forEach((d,k)=>{const x=X(k);g+=tx(x+sw/2,H-34,DL[d.i],`text-anchor="middle" font-size="10" fill="var(--mut)" ${d.fut?'opacity=".4"':''}`);if(d.fut)return;
-  const x1=x+sw*.1,x2=x1+bw+2;
-  if(d.n)g+=`<rect x="${x1}" y="${yl(d.n)}" width="${bw}" height="${yl(0)-yl(d.n)}" rx="2" fill="var(--acc)"/>`+tx(x1+bw/2,yl(d.n)-3,d.n,'text-anchor="middle" font-size="9" font-weight="700" fill="var(--acc)"');
-  if(d.c)g+=`<rect x="${x2}" y="${yl(d.c)}" width="${bw}" height="${yl(0)-yl(d.c)}" rx="2" fill="var(--ok)"/>`+tx(x2+bw/2,yl(d.c)-3,d.c,'text-anchor="middle" font-size="9" font-weight="700" fill="var(--ok)"')});
- const real=days.map((d,k)=>({...d,k})).filter(d=>!d.fut);
- // tendencias lineales (demanda vs capacidad de cierre)
- const tn=lr(real.map(d=>({x:d.k,y:d.n}))),tc=lr(real.map(d=>({x:d.k,y:d.c})));
- const k0=real[0]?.k||0,k1=real.length?real[real.length-1].k:0,cx=k=>X(k)+sw/2;
- if(tn)g+=`<line x1="${cx(k0)}" x2="${cx(k1)}" y1="${yl(cl(tn.m*k0+tn.b))}" y2="${yl(cl(tn.m*k1+tn.b))}" stroke="var(--acc)" stroke-width="2" stroke-dasharray="6 4"/>`;
- if(tc)g+=`<line x1="${cx(k0)}" x2="${cx(k1)}" y1="${yl(cl(tc.m*k0+tc.b))}" y2="${yl(cl(tc.m*k1+tc.b))}" stroke="var(--ok)" stroke-width="2" stroke-dasharray="6 4"/>`;
- // backlog acumulado (eje derecho)
- if(real.length){g+=`<polyline fill="none" stroke="var(--pri)" stroke-width="2.4" points="${real.map(d=>cx(d.k)+','+yr(d.b)).join(' ')}"/>`+real.map(d=>`<circle cx="${cx(d.k)}" cy="${yr(d.b)}" r="3" fill="var(--card)" stroke="var(--pri)" stroke-width="2"/>`+((d.i===5||d.k===k1)?tx(cx(d.k),yr(d.b)-8,d.b,'text-anchor="middle" font-size="10" font-weight="800" fill="var(--pri)"'):'')).join('')}
- const leg=legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Pendientes acumuladas (eje der.)',0,line('var(--pri)')],['Tendencia nuevas '+(tn?arrow(tn.m):'')+' '+(tn?(tn.m*6).toFixed(1)+'/sem':''),0,dash('var(--acc)')],['Tendencia cierres '+(tc?arrow(tc.m):'')+' '+(tc?(tc.m*6).toFixed(1)+'/sem':''),0,dash('var(--ok)')]]);
- return leg+`<div class="sc"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:680px;height:auto;font-family:system-ui">${g}</svg></div>`}
-
-// B) Cierres acumulados por día — comparativo de las 3 semanas
-function chartCum(){
- const T=hoy(),cm=monOf(T),wk=[-14,-7,0].map(n=>addD(cm,n));
- const ser=wk.map(w=>[0,1,2,3,4,5].map(i=>{const d=addD(w,i);if(d>T)return null;const end=i===5?addD(d,1):d;return S.sacs.filter(s=>cd(s)&&cd(s)>=w&&cd(s)<=end).length}));
- const bench=[0,1,2,3,4,5].map(i=>ser[0][i]!=null&&ser[1][i]!=null?(ser[0][i]+ser[1][i])/2:null);
- const W=420,H=270,L=32,R=44,Tp=22,B=34,pw=W-L-R,ph=H-Tp-B,mx=Math.max(3,...ser.flat().filter(v=>v!=null),...bench.filter(v=>v!=null))+1;
- const X=i=>L+pw*i/5,Y=v=>Tp+ph*(1-v/mx);let g='';
- for(let i=0;i<=4;i++){const v=Math.round(mx*i/4),y=Y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(L-6,y+3,v,'text-anchor="end" font-size="9" fill="var(--mut)"')}
- ['Lun','Mar','Mié','Jue','Vie','Sáb'].forEach((t,i)=>g+=tx(X(i),H-14,t,'text-anchor="middle" font-size="10" fill="var(--mut)"'));
- const col=['#8a9bb5','#3b82c4','var(--acc)'],nm=wk.map((w,i)=>['Sem '+ddmm(w),'Sem '+ddmm(w),'Sem actual '+ddmm(w)][i]);
- const pts=a=>a.map((v,i)=>v==null?null:X(i)+','+Y(v)).filter(Boolean).join(' ');
- if(bench.some(v=>v!=null))g+=`<polyline fill="none" stroke="var(--mut)" stroke-width="2" stroke-dasharray="3 4" points="${pts(bench)}"/>`;
- ser.forEach((a,wi)=>{g+=`<polyline fill="none" stroke="${col[wi]}" stroke-width="${wi===2?3:2}" opacity="${wi===2?1:.85}" points="${pts(a)}"/>`;a.forEach((v,i)=>{if(v==null)return;g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${wi===2?3.5:2.5}" fill="${col[wi]}"/>`;if(wi===2||i===5)g+=tx(X(i),Y(v)-7+(wi===1&&i===5?-9:0),v,`text-anchor="middle" font-size="10" font-weight="800" fill="${col[wi]}"`)})});
- return legend([[nm[0],col[0]],[nm[1],col[1]],[nm[2],col[2]],['Promedio sem. anteriores',0,dash('var(--mut)')]])+`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:560px;display:block;margin:auto;height:auto;font-family:system-ui">${g}</svg>`}
-
-// C) Mensual — ventana móvil de 3 meses
-function chartMonthly(){
- const ym0=hoy().slice(0,7),M=[-2,-1,0].map(n=>addM(ym0,n)).map(ym=>{const n=S.sacs.filter(s=>s.fecha.slice(0,7)===ym).length,cs=S.sacs.filter(s=>cd(s)&&cd(s).slice(0,7)===ym),c=cs.length,ok=cs.filter(s=>s.fin<=s.fechaLimite).length,b=S.sacs.filter(s=>s.fecha<=ym+'-31'&&!(cd(s)&&cd(s)<=ym+'-31')).length;return{ym,n,c,b,sla:c?Math.round(ok/c*100):null}});
- const W=520,H=310,L=34,R=40,Tp=22,B=74,sw=(W-L-R)/3,ph=H-Tp-B,mx=Math.max(3,...M.map(m=>Math.max(m.n,m.c)))+1,mb=Math.max(3,...M.map(m=>m.b))+1;
- const Y=v=>Tp+ph*(1-v/mx),Yr=v=>Tp+ph*(1-v/mb),cx=i=>L+sw*i+sw/2,bw=sw*.26;let g='';
- for(let i=0;i<=4;i++){const y=Y(mx*i/4);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(L-6,y+3,Math.round(mx*i/4),'text-anchor="end" font-size="9" fill="var(--mut)"')+tx(W-R+6,Yr(mb*i/4)+3,Math.round(mb*i/4),'font-size="9" fill="var(--pri)"')}
- M.forEach((m,i)=>{const x1=cx(i)-bw-2,x2=cx(i)+2,cur=i===2;
-  g+=`<rect x="${x1}" y="${Y(m.n)}" width="${bw}" height="${Y(0)-Y(m.n)}" rx="3" fill="var(--acc)"/>`+tx(x1+bw/2,Y(m.n)-5,m.n,'text-anchor="middle" font-size="12" font-weight="800" fill="var(--acc)"')+
-     `<rect x="${x2}" y="${Y(m.c)}" width="${bw}" height="${Y(0)-Y(m.c)}" rx="3" fill="var(--ok)"/>`+tx(x2+bw/2,Y(m.c)-5,m.c,'text-anchor="middle" font-size="12" font-weight="800" fill="var(--ok)"')+
-     tx(cx(i),H-48,MES[+m.ym.slice(5)-1].toUpperCase()+' '+m.ym.slice(2,4)+(cur?' · en curso':''),'text-anchor="middle" font-size="12" font-weight="700" fill="var(--tx)"')+
-     tx(cx(i),H-30,m.sla==null?'En plazo: –':'En plazo: '+m.sla+'%','text-anchor="middle" font-size="11" font-weight="700" fill="'+(m.sla==null?'var(--mut)':m.sla>=80?'var(--ok)':m.sla>=60?'var(--warn)':'var(--bad)')+'"')});
- const tc=lr(M.map((m,i)=>({x:i,y:m.c}))),tn=lr(M.map((m,i)=>({x:i,y:m.n}))),tb=lr(M.map((m,i)=>({x:i,y:m.b})));
- const cl=v=>Math.max(0,Math.min(mx,v));
- if(tn)g+=`<line x1="${cx(0)}" x2="${cx(2)}" y1="${Y(cl(tn.b))}" y2="${Y(cl(tn.m*2+tn.b))}" stroke="var(--acc)" stroke-width="2" stroke-dasharray="6 4"/>`;
- if(tc)g+=`<line x1="${cx(0)}" x2="${cx(2)}" y1="${Y(cl(tc.b))}" y2="${Y(cl(tc.m*2+tc.b))}" stroke="var(--ok)" stroke-width="2" stroke-dasharray="6 4"/>`;
- g+=`<polyline fill="none" stroke="var(--pri)" stroke-width="2.6" points="${M.map((m,i)=>cx(i)+','+Yr(m.b)).join(' ')}"/>`+M.map((m,i)=>`<circle cx="${cx(i)}" cy="${Yr(m.b)}" r="4" fill="var(--card)" stroke="var(--pri)" stroke-width="2.4"/>`+tx(cx(i),Yr(m.b)-9,m.b,'text-anchor="middle" font-size="11" font-weight="800" fill="var(--pri)"')).join('');
- return legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Pendientes a fin de mes (eje der.)',0,line('var(--pri)')],['Tend. nuevas '+(tn?arrow(tn.m)+' '+tn.m.toFixed(1)+'/mes':''),0,dash('var(--acc)')],['Tend. cierres '+(tc?arrow(tc.m)+' '+tc.m.toFixed(1)+'/mes':''),0,dash('var(--ok)')]])+`<div class="sc"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:480px;height:auto;font-family:system-ui">${g}</svg></div>`}
+// Gráfico único: 3 meses (barras) | 3 semanas (barras) | semana en curso Lun–Sáb (avance diario, se actualiza sola)
+function chartUnified(){
+ const T=hoy(),cm=monOf(T),ym0=T.slice(0,7);
+ const between=(f,a,b)=>S.sacs.filter(s=>{const v=f(s);return v&&v>=a&&v<=b}).length;
+ const mo=[-2,-1,0].map(n=>addM(ym0,n)).map(ym=>({l:MES[+ym.slice(5)-1].toUpperCase()+' '+ym.slice(2,4),n:between(s=>s.fecha,ym+'-01',ym+'-31'),c:between(cd,ym+'-01',ym+'-31')}));
+ const wk=[-14,-7,0].map(n=>addD(cm,n)).map(w=>({l:ddmm(w)+'–'+ddmm(addD(w,5)),n:between(s=>s.fecha,w,addD(w,6)),c:between(cd,w,addD(w,6))}));
+ const days=[0,1,2,3,4,5].map(i=>{const d=addD(cm,i),e=i===5?addD(d,1):d;return{i,d,fut:d>T,n:between(s=>s.fecha,d,e),c:between(cd,d,e)}});
+ let cum=0;days.forEach(x=>{if(!x.fut){cum+=x.c;x.cum=cum}});
+ const W=900,H=350,Tp=64,B=46,ph=H-Tp-B;let g='';
+ const frame=(x0,w,t,sub,live)=>{g+=`<rect x="${x0}" y="10" width="${w}" height="${H-18}" rx="10" fill="var(--mut)" opacity="${live?.12:.06}"/>`+tx(x0+w/2,28,t,'text-anchor="middle" font-size="12" font-weight="800" fill="var(--tx)"')+tx(x0+w/2,42,sub,'text-anchor="middle" font-size="9.5" fill="'+(live?'var(--ok)':'var(--mut)')+'"')};
+ const grid=(x0,w,mx,col)=>{for(let i=0;i<=4;i++){const y=Tp+ph*(1-i/4);g+=`<line x1="${x0+20}" x2="${x0+w-8}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(x0+16,y+3,Math.round(mx*i/4),'text-anchor="end" font-size="9" fill="'+(col||'var(--mut)')+'"')}};
+ const bars=(x0,w,items,mx,cats)=>{const sw=(w-28)/items.length,Y=v=>Tp+ph*(1-v/mx),bw=Math.min(26,sw*.3);items.forEach((m,i)=>{const cx=x0+20+sw*i+sw/2;
+  if(!m.fut){[[m.n,'var(--acc)',cx-bw-1],[m.c,'var(--ok)',cx+1]].forEach(([v,c,x])=>{g+=`<rect x="${x}" y="${Y(v)}" width="${bw}" height="${Y(0)-Y(v)}" rx="3" fill="${c}"/>`+(v?tx(x+bw/2,Y(v)-4,v,'text-anchor="middle" font-size="11" font-weight="800" fill="'+c+'"'):'')})}
+  g+=tx(cx,H-24,cats(m,i),'text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--tx)"'+(m.fut?' opacity=".35"':''))})};
+ // Panel 1: meses
+ const m1=Math.max(3,...mo.flatMap(m=>[m.n,m.c]))+1;frame(8,276,'Últimos 3 meses','totales por mes');grid(8,276,m1);bars(8,276,mo,m1,m=>m.l);
+ // Panel 2: semanas
+ const m2=Math.max(3,...wk.flatMap(m=>[m.n,m.c]))+1;frame(292,276,'Últimas 3 semanas','totales por semana');grid(292,276,m2);bars(292,276,wk,m2,m=>m.l);
+ // Panel 3: semana en curso con avance diario
+ const x3=576,w3=316,m3=Math.max(3,...days.flatMap(m=>[m.n,m.c]))+1,mc=Math.max(3,cum)+1;
+ frame(x3,w3,'Semana en curso · Lun–Sáb','● avance diario, se actualiza solo',true);grid(x3,w3,m3);
+ bars(x3,w3,days,m3,m=>['Lun','Mar','Mié','Jue','Vie','Sáb'][m.i]+' '+m.d.slice(8));
+ const sw3=(w3-28)/6,cx3=i=>x3+20+sw3*i+sw3/2,Yc=v=>Tp+ph*(1-v/mc),real=days.filter(d=>!d.fut);
+ for(let i=0;i<=4;i++)g+=tx(x3+w3-4,Tp+ph*(1-i/4)+3,Math.round(mc*i/4),'font-size="9" fill="var(--pri)"');
+ if(real.length){g+=`<polyline fill="none" stroke="var(--pri)" stroke-width="2.6" points="${real.map(d=>cx3(d.i)+','+Yc(d.cum)).join(' ')}"/>`+real.map(d=>`<circle cx="${cx3(d.i)}" cy="${Yc(d.cum)}" r="3.4" fill="var(--card)" stroke="var(--pri)" stroke-width="2.2"/>`+tx(cx3(d.i),Yc(d.cum)-9,d.cum,'text-anchor="middle" font-size="10" font-weight="800" fill="var(--pri)"')).join('');
+  const tc=lr(real.map(d=>({x:d.i,y:d.c})));if(tc&&real.length>2){const Y=v=>Tp+ph*(1-Math.max(0,Math.min(m3,v))/m3),a=real[0].i,b=real[real.length-1].i;g+=`<line x1="${cx3(a)}" x2="${cx3(b)}" y1="${Y(tc.m*a+tc.b)}" y2="${Y(tc.m*b+tc.b)}" stroke="var(--ok)" stroke-width="2" stroke-dasharray="6 4"/>`;}}
+ const tc2=real.length>2?lr(real.map(d=>({x:d.i,y:d.c}))):null;
+ return legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Cerradas acumuladas de la semana (eje der.)',0,line('var(--pri)')],['Tendencia de cierres'+(tc2?' '+arrow(tc2.m)+' '+(tc2.m*6).toFixed(1)+'/sem':' (desde el 3.er día)'),0,dash('var(--ok)')]])+`<div class="sc"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:760px;height:auto;font-family:system-ui">${g}</svg></div>`}
 
 // D) Dona de estados y antigüedad del backlog
 function donut(){const E=[['Abierta','var(--bad)'],['En curso','var(--warn)'],['Cerrada','#3b82c4'],['Verificada','var(--ok)']],tot=S.sacs.length||1,C=2*Math.PI*42;let off=0,a='';
@@ -260,9 +230,7 @@ function vDash(){const s=stats(),cl=S.sacs.filter(isC),ot=cl.length?Math.round(c
  const k=(n,t,c)=>`<div class="kpi"><b ${c?`style="color:${c}"`:''}>${n}</b><span>${t}</span></div>`;
  return `${rh('DASHBOARD DE SAC','Solicitudes de Acciones Correctivas · '+hoy())}<div class="noprint" style="text-align:right;margin-bottom:8px"><button class="btn ghost" onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Pantalla completa</button> <button class="btn acc" onclick="print()">📄 Exportar PDF</button></div>
  <div class="kpis">${k(s.total,'SAC totales')}${k(s.abiertas,'Abiertas','var(--bad)')}${k(s.curso,'En curso','var(--warn)')}${k(s.porVerif,'Por verificar','#3b82c4')}${k(s.verif,'Verificadas','var(--ok)')}${k(s.venc,'Vencidas','var(--bad)')}${k(cumpl+'%','Cierre global')}${k(ot+'%','Cerradas en plazo',ot>=80?'var(--ok)':ot>=60?'var(--warn)':'var(--bad)')}${k(s.prom,'Días prom. cierre')}${k(s.horas,'Horas invertidas')}</div>
- <div class="card"><div class="ct"><b>Avance diario · Lun–Sáb · últimas 3 semanas</b><span>Barras: nuevas vs cerradas por día · el domingo se suma al sábado</span></div>${chartDaily()}</div>
- <div class="card"><div class="ct"><b>Cierres acumulados por día · comparativo semanal</b><span>Semana actual vs 2 anteriores</span></div>${chartCum()}</div>
- <div class="card"><div class="ct"><b>Evolución mensual · últimos 3 meses</b><span>Se desplaza al iniciar cada mes</span></div>${chartMonthly()}</div>
+ <div class="card"><div class="ct"><b>Avance de SAC · meses · semanas · semana en curso</b><span>Un solo gráfico · la semana en curso se actualiza sola</span></div>${chartUnified()}</div>
  <div class="row"><div class="card"><div class="ct"><b>Estado actual</b></div>${donut()}</div><div class="card"><div class="ct"><b>Antigüedad de pendientes</b></div>${aging()}</div></div>
  <div class="row"><div class="card"><b>Por tipo</b>${bars(count(S.sacs,'tipo'))}</div><div class="card"><b>Por planta / cliente</b>${bars(count(S.sacs,'planta'))}</div><div class="card"><b>Por prioridad</b>${bars(count(S.sacs.map(x=>({p:'Prioridad '+x.prioridad})),'p'))}</div></div>`}
 function drawDash(){}
@@ -310,7 +278,7 @@ async function pull(){if(!S.url)return;try{const r=await fetch(S.url+'?email='+e
  S.user.rol=r.nivel;if(S.user.area==='Gerencia'&&S.user.rol==='tecnico')S.user.rol='gerencia';r.clientes.forEach(c=>{if(!S.plantas.includes(c.cliente))S.plantas.push(c.cliente);if(c.cliente===S.user.planta&&c.logo)S.logoCliente=c.logo});
  if(!r.logoLT){const lt=document.querySelector('header .lg').src;if(lt.startsWith('data:'))api({action:'logoLT',data:lt})}
  save();if(view!=='cfg')render()}catch(e){console.warn('pull',e)}}
-addEventListener('online',flush);setInterval(()=>S.url&&(S.queue.length?flush():pull()),60000);
+/*auto-dash*/setInterval(()=>{if(view==='dash')render()},60000);addEventListener('online',flush);setInterval(()=>S.url&&(S.queue.length?flush():pull()),60000);
 if(location.hash.length>4){setTimeout(()=>{if(S.sacs.find(s=>s.id===location.hash.slice(1)))go('det',location.hash.slice(1))},1500)}
 // ===== Arranque =====
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
