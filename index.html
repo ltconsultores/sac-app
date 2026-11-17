@@ -57,8 +57,9 @@ const AREAS=['Mantenimiento','QC','Operaciones','Seguridad','Administración','S
 const TIPOS=['Electricidad','Mecánica','Refrigeración','Civil','Otros Servicios'];
 const PRIO={1:{t:'1 · Urgente (1-2 días)',d:2},2:{t:'2 · Normal (3-15 días)',d:15},3:{t:'3 · Programable (16-60 días)',d:60}};
 const K='sac_v1';
+const SERVER='https://script.google.com/macros/s/AKfycbwQe6bv-fOp31vdA8A9voOchim8LtE0E9se9UvTVEEen12hw_FleZVQcdY3HY5zF-6a/exec';
 let S=load();
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s)return s}catch(e){}return{user:{nombre:'',email:'',area:'',rol:'tecnico',planta:''},url:'',queue:[],plantas:['Planta 1'],sacs:[],notifs:[],seq:0}}
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s){if(!s.url)s.url=SERVER;if(!s.queue)s.queue=[];return s}}catch(e){}return{user:{nombre:'',email:'',area:'',rol:'tecnico',planta:''},url:SERVER,queue:[],plantas:['Planta 1'],sacs:[],notifs:[],seq:0}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){toast('Memoria llena: reduce fotos')}}
 const $=s=>document.querySelector(s);const hoy=()=>new Date().toISOString().slice(0,10);
 const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
