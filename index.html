@@ -51,6 +51,13 @@ textarea{min-height:80px}
 .bar i{background:linear-gradient(90deg,var(--pri),var(--acc))}
 .ct{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.ct b{font-size:15px}.ct span{font-size:12px;color:var(--mut)}
 .chip{display:inline-block;border-radius:20px;padding:2px 9px;font-size:12px;font-weight:700;color:#fff}
+.card{border:2px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#e8702a,#3b82c4) border-box;box-shadow:0 6px 16px rgba(31,58,95,.14),0 1px 0 rgba(255,255,255,.5) inset}
+.kpi{border:2px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#3b82c4,#e8702a) border-box;box-shadow:0 5px 12px rgba(31,58,95,.16);position:relative;overflow:hidden}.kpi:before{content:'';position:absolute;left:0;right:0;top:0;height:42%;background:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,0))}.kpi b{text-shadow:1px 2px 2px rgba(0,0,0,.18)}
+.bar i{height:16px;border-radius:5px;background:linear-gradient(180deg,#ffa066,#e8702a 55%,#b3501a);box-shadow:0 3px 5px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.18)}
+.tag,.chip{box-shadow:0 2px 4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.4);text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.btn{box-shadow:0 3px 6px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.3)}.leg i{border-radius:3px;box-shadow:1px 2px 3px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+.rh{border-bottom:3px solid transparent;border-image:linear-gradient(90deg,#e8702a,#3b82c4) 1}
+.card.p1{border-left:7px solid var(--bad)}.card.p2{border-left:7px solid var(--warn)}.card.p3{border-left:7px solid var(--ok)}
 @media print{:root{--bg:#fff;--card:#fff;--tx:#111;--mut:#555;--pri:#1f3a5f;--bd:#ccc}header,nav,.noprint{display:none!important}body{background:#fff;color:#000;padding:0}.card,.kpi{break-inside:avoid}.rh.pr-only{display:flex}.sc{overflow:visible}.sc svg{min-width:0!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.gal img{width:31%}}
 </style>
 </head>
@@ -190,47 +197,55 @@ const legend=a=>`<div class="leg">${a.map(x=>`<span>${x[2]||'<i style="backgroun
 const dash=c=>`<svg width="18" height="8" style="vertical-align:middle;margin-right:4px"><line x1="0" x2="18" y1="4" y2="4" stroke="${c}" stroke-width="2.2" stroke-dasharray="4 3"/></svg>`;
 const line=c=>`<svg width="18" height="8" style="vertical-align:middle;margin-right:4px"><line x1="0" x2="18" y1="4" y2="4" stroke="${c}" stroke-width="2.4"/></svg>`;
 
-// Gráfico único: 3 meses (barras) | 3 semanas (barras) | semana en curso Lun–Sáb (avance diario, se actualiza sola)
+// ---- Estilo 3D: degradados, barras extruidas, etiquetas con relieve y sombras ----
+const C3={acc:['#ffa066','#e8702a','#b3501a'],ok:['#6fd49a','#2e9e5b','#1f7a43'],pri:['#8bb6ea','#3b82c4','#26588f'],bad:['#ff8a8a','#d64545','#a02f2f'],warn:['#ffd45e','#e0a100','#a87800']};
+const defs3=()=>'<defs><filter id="sh" x="-30%" y="-30%" width="170%" height="170%"><feDropShadow dx="1.5" dy="3" stdDeviation="2" flood-color="#000" flood-opacity=".38"/></filter><filter id="sh2" x="-10%" y="-10%" width="125%" height="130%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1f3a5f" flood-opacity=".25"/></filter>'+
+ Object.entries(C3).map(([k,[a,b,c]])=>'<linearGradient id="g_'+k+'" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="'+a+'"/><stop offset=".5" stop-color="'+b+'"/><stop offset="1" stop-color="'+c+'"/></linearGradient><linearGradient id="gv_'+k+'" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="'+a+'"/><stop offset="1" stop-color="'+c+'"/></linearGradient>').join('')+
+ '<linearGradient id="gb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8702a"/><stop offset="1" stop-color="#3b82c4"/></linearGradient><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><radialGradient id="gs" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#9cc4f2"/><stop offset="1" stop-color="#26588f"/></radialGradient></defs>';
+const bar3d=(x,y,w,hh,k,d=6)=>{if(hh<1)return'';const e=d*.7,c=C3[k];return '<g filter="url(#sh)"><polygon points="'+x+','+y+' '+(x+d)+','+(y-e)+' '+(x+w+d)+','+(y-e)+' '+(x+w)+','+y+'" fill="'+c[0]+'"/><polygon points="'+(x+w)+','+y+' '+(x+w+d)+','+(y-e)+' '+(x+w+d)+','+(y+hh-e)+' '+(x+w)+','+(y+hh)+'" fill="'+c[2]+'"/><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" fill="url(#g_'+k+')"/><rect x="'+(x+w*.14)+'" y="'+y+'" width="'+(w*.14)+'" height="'+hh+'" fill="#fff" opacity=".28"/></g>'};
+const badge=(cx,y,t,k)=>{t=String(t);const w=t.length*6.4+10;return '<g filter="url(#sh)"><rect x="'+(cx-w/2)+'" y="'+y+'" width="'+w+'" height="15" rx="7.5" fill="url(#gv_'+k+')" stroke="#fff" stroke-opacity=".7" stroke-width="1"/><rect x="'+(cx-w/2+2)+'" y="'+(y+1)+'" width="'+(w-4)+'" height="6" rx="3" fill="url(#gp)"/></g><text x="'+cx+'" y="'+(y+11)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" style="paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:.8px">'+t+'</text>'};
+const sphere=(x,y,r=4)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="url(#gs)" stroke="#fff" stroke-width="1" filter="url(#sh)"/>';
+
+// Gráfico único: 3 meses | semanas del mes | semana en curso Lun–Dom (avance diario, se actualiza sola)
 function chartUnified(){
  const T=hoy(),cm=monOf(T),ym0=T.slice(0,7);
  const between=(f,a,b)=>S.sacs.filter(s=>{const v=f(s);return v&&v>=a&&v<=b}).length;
  const mo=[-2,-1,0].map(n=>addM(ym0,n)).map(ym=>({l:MES[+ym.slice(5)-1].toUpperCase()+' '+ym.slice(2,4),n:between(s=>s.fecha,ym+'-01',ym+'-31'),c:between(cd,ym+'-01',ym+'-31')}));
- const wk=[-14,-7,0].map(n=>addD(cm,n)).map(w=>({l:ddmm(w)+'–'+ddmm(addD(w,5)),n:between(s=>s.fecha,w,addD(w,6)),c:between(cd,w,addD(w,6))}));
- const days=[0,1,2,3,4,5].map(i=>{const d=addD(cm,i),e=i===5?addD(d,1):d;return{i,d,fut:d>T,n:between(s=>s.fecha,d,e),c:between(cd,d,e)}});
+ let w0=monOf(ym0+'-01');if(w0<ym0+'-01')w0=addD(w0,7);const wk=[];for(let w=w0;w.slice(0,7)===ym0;w=addD(w,7))wk.push({l:'S'+(wk.length+1)+' '+ddmm(w),fut:w>T,n:between(s=>s.fecha,w,addD(w,6)),c:between(cd,w,addD(w,6))});
+ const days=[0,1,2,3,4,5,6].map(i=>{const d=addD(cm,i);return{i,d,fut:d>T,n:between(s=>s.fecha,d,d),c:between(cd,d,d)}});
  let cum=0;days.forEach(x=>{if(!x.fut){cum+=x.c;x.cum=cum}});
- const W=900,H=350,Tp=64,B=46,ph=H-Tp-B;let g='';
- const frame=(x0,w,t,sub,live)=>{g+=`<rect x="${x0}" y="10" width="${w}" height="${H-18}" rx="10" fill="var(--mut)" opacity="${live?.12:.06}"/>`+tx(x0+w/2,28,t,'text-anchor="middle" font-size="12" font-weight="800" fill="var(--tx)"')+tx(x0+w/2,42,sub,'text-anchor="middle" font-size="9.5" fill="'+(live?'var(--ok)':'var(--mut)')+'"')};
- const grid=(x0,w,mx,col)=>{for(let i=0;i<=4;i++){const y=Tp+ph*(1-i/4);g+=`<line x1="${x0+20}" x2="${x0+w-8}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(x0+16,y+3,Math.round(mx*i/4),'text-anchor="end" font-size="9" fill="'+(col||'var(--mut)')+'"')}};
- const bars=(x0,w,items,mx,cats)=>{const sw=(w-28)/items.length,Y=v=>Tp+ph*(1-v/mx),bw=Math.min(26,sw*.3);items.forEach((m,i)=>{const cx=x0+20+sw*i+sw/2;
-  if(!m.fut){[[m.n,'var(--acc)',cx-bw-1],[m.c,'var(--ok)',cx+1]].forEach(([v,c,x])=>{g+=`<rect x="${x}" y="${Y(v)}" width="${bw}" height="${Y(0)-Y(v)}" rx="3" fill="${c}"/>`+(v?tx(x+bw/2,Y(v)-4,v,'text-anchor="middle" font-size="11" font-weight="800" fill="'+c+'"'):'')})}
-  g+=tx(cx,H-24,cats(m,i),'text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--tx)"'+(m.fut?' opacity=".35"':''))})};
- // Panel 1: meses
- const m1=Math.max(3,...mo.flatMap(m=>[m.n,m.c]))+1;frame(8,276,'Últimos 3 meses','totales por mes');grid(8,276,m1);bars(8,276,mo,m1,m=>m.l);
- // Panel 2: semanas
- const m2=Math.max(3,...wk.flatMap(m=>[m.n,m.c]))+1;frame(292,276,'Últimas 3 semanas','totales por semana');grid(292,276,m2);bars(292,276,wk,m2,m=>m.l);
- // Panel 3: semana en curso con avance diario
- const x3=576,w3=316,m3=Math.max(3,...days.flatMap(m=>[m.n,m.c]))+1,mc=Math.max(3,cum)+1;
- frame(x3,w3,'Semana en curso · Lun–Sáb','● avance diario, se actualiza solo',true);grid(x3,w3,m3);
- bars(x3,w3,days,m3,m=>['Lun','Mar','Mié','Jue','Vie','Sáb'][m.i]+' '+m.d.slice(8));
- const sw3=(w3-28)/6,cx3=i=>x3+20+sw3*i+sw3/2,Yc=v=>Tp+ph*(1-v/mc),real=days.filter(d=>!d.fut);
- for(let i=0;i<=4;i++)g+=tx(x3+w3-4,Tp+ph*(1-i/4)+3,Math.round(mc*i/4),'font-size="9" fill="var(--pri)"');
- if(real.length){g+=`<polyline fill="none" stroke="var(--pri)" stroke-width="2.6" points="${real.map(d=>cx3(d.i)+','+Yc(d.cum)).join(' ')}"/>`+real.map(d=>`<circle cx="${cx3(d.i)}" cy="${Yc(d.cum)}" r="3.4" fill="var(--card)" stroke="var(--pri)" stroke-width="2.2"/>`+tx(cx3(d.i),Yc(d.cum)-9,d.cum,'text-anchor="middle" font-size="10" font-weight="800" fill="var(--pri)"')).join('');
-  const tc=lr(real.map(d=>({x:d.i,y:d.c})));if(tc&&real.length>2){const Y=v=>Tp+ph*(1-Math.max(0,Math.min(m3,v))/m3),a=real[0].i,b=real[real.length-1].i;g+=`<line x1="${cx3(a)}" x2="${cx3(b)}" y1="${Y(tc.m*a+tc.b)}" y2="${Y(tc.m*b+tc.b)}" stroke="var(--ok)" stroke-width="2" stroke-dasharray="6 4"/>`;}}
- const tc2=real.length>2?lr(real.map(d=>({x:d.i,y:d.c}))):null;
- return legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Cerradas acumuladas de la semana (eje der.)',0,line('var(--pri)')],['Tendencia de cierres'+(tc2?' '+arrow(tc2.m)+' '+(tc2.m*6).toFixed(1)+'/sem':' (desde el 3.er día)'),0,dash('var(--ok)')]])+`<div class="sc"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:760px;height:auto;font-family:system-ui">${g}</svg></div>`}
+ const W=900,H=370,Tp=78,B=46,ph=H-Tp-B;let g=defs3();
+ const frame=(x0,w,t,sub,live)=>{g+='<rect x="'+x0+'" y="8" width="'+w+'" height="'+(H-16)+'" rx="16" fill="var(--card)" stroke="url(#gb)" stroke-width="2.2" filter="url(#sh2)"/><rect x="'+(x0+3)+'" y="11" width="'+(w-6)+'" height="'+((H-16)/2.4)+'" rx="14" fill="url(#gp)" opacity=".35"/>'+tx(x0+w/2,30,t,'text-anchor="middle" font-size="12.5" font-weight="800" fill="var(--tx)"')+tx(x0+w/2,45,sub,'text-anchor="middle" font-size="9.5" fill="'+(live?'#2e9e5b':'var(--mut)')+'"')};
+ const grid=(x0,w,mx,col)=>{for(let i=0;i<=4;i++){const y=Tp+ph*(1-i/4);g+='<line x1="'+(x0+20)+'" x2="'+(x0+w-8)+'" y1="'+y+'" y2="'+y+'" stroke="var(--bd)" stroke-dasharray="2 4"/>'+tx(x0+16,y+3,Math.round(mx*i/4),'text-anchor="end" font-size="9" fill="'+(col||'var(--mut)')+'"')}
+  g+='<polygon points="'+(x0+14)+','+(Tp+ph+6)+' '+(x0+w-4)+','+(Tp+ph+6)+' '+(x0+w+2)+','+(Tp+ph)+' '+(x0+20)+','+(Tp+ph)+'" fill="var(--mut)" opacity=".35"/>'};
+ const bars=(x0,w,items,mx,cats)=>{const sw=(w-28)/items.length,Y=v=>Tp+ph*(1-v/mx),bw=Math.min(26,sw*.32);items.forEach((m,i)=>{const cx=x0+20+sw*i+sw/2;
+  if(!m.fut){[[m.n,'acc',cx-bw-3],[m.c,'ok',cx+1]].forEach(([v,k,x])=>{g+=bar3d(x,Y(v),bw,Y(0)-Y(v),k)+(v?badge(x+bw/2+3,Y(v)-24,v,k):'')})}
+  g+=tx(cx,H-22,cats(m,i),'text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--tx)"'+(m.fut?' opacity=".35"':''))})};
+ const tl=items=>{const pt=k=>lr(items.map((m,i)=>({x:i,y:m[k]})).filter((_,i)=>!items[i].fut));return{n:pt('n'),c:pt('c')}};
+ const sl=(items,u)=>{const t=tl(items).c;return t&&items.filter(m=>!m.fut).length>1?' · cierres '+arrow(t.m)+(t.m>0?'+':'')+t.m.toFixed(1)+'/'+u:''};
+ const trend=(x0,w,items,mx)=>{const sw=(w-28)/items.length,cx=i=>x0+20+sw*i+sw/2,Y=v=>Tp+ph*(1-Math.max(0,Math.min(mx,v))/mx),idx=items.map((m,i)=>i).filter(i=>!items[i].fut),t=tl(items);if(idx.length<2)return;const a=idx[0],b=idx[idx.length-1];[['n','var(--acc)','acc'],['c','var(--ok)','ok']].forEach(([k,c,kk])=>{const r=t[k];if(r)g+='<line x1="'+cx(a)+'" x2="'+cx(b)+'" y1="'+Y(r.m*a+r.b)+'" y2="'+Y(r.m*b+r.b)+'" stroke="'+c+'" stroke-width="2.6" stroke-dasharray="7 4" filter="url(#sh)"/><circle cx="'+cx(b)+'" cy="'+Y(r.m*b+r.b)+'" r="3.4" fill="'+C3[kk][1]+'" stroke="#fff" stroke-width="1.2"/>'})};
+ const m1=Math.max(3,...mo.flatMap(m=>[m.n,m.c]))+2;frame(8,276,'Últimos 3 meses','totales'+sl(mo,'mes'));grid(8,276,m1);bars(8,276,mo,m1,m=>m.l);trend(8,276,mo,m1);
+ const m2=Math.max(3,...wk.flatMap(m=>[m.n,m.c]))+2;frame(292,276,'Semanas de '+MES[+ym0.slice(5)-1]+' ('+wk.length+')','totales'+sl(wk,'sem'));grid(292,276,m2);bars(292,276,wk,m2,m=>m.l);trend(292,276,wk,m2);
+ const x3=576,w3=316,m3=Math.max(3,...days.flatMap(m=>[m.n,m.c]))+2,mc=Math.max(3,cum)+2;
+ frame(x3,w3,'Semana en curso · Lun–Dom','● se actualiza solo'+sl(days,'día'),true);grid(x3,w3,m3);
+ bars(x3,w3,days,m3,m=>['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][m.i]+' '+m.d.slice(8));trend(x3,w3,days,m3);
+ const sw3=(w3-28)/7,cx3=i=>x3+20+sw3*i+sw3/2,Yc=v=>Tp+ph*(1-v/mc),real=days.filter(d=>!d.fut);
+ for(let i=0;i<=4;i++)g+=tx(x3+w3-4,Tp+ph*(1-i/4)+3,Math.round(mc*i/4),'font-size="9" font-weight="700" fill="#3b82c4"');
+ if(real.length){g+='<polyline fill="none" stroke="#3b82c4" stroke-width="3" stroke-linejoin="round" filter="url(#sh)" points="'+real.map(d=>cx3(d.i)+','+Yc(d.cum)).join(' ')+'"/>'+real.map(d=>sphere(cx3(d.i),Yc(d.cum),4.2)+badge(cx3(d.i),Yc(d.cum)-24,d.cum,'pri')).join('')}
+ return legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Cerradas acumuladas de la semana (eje der.)',0,line('#3b82c4')],['Tendencia nuevas',0,dash('var(--acc)')],['Tendencia cierres',0,dash('var(--ok)')]])+'<div class="sc"><svg viewBox="0 0 '+W+' '+H+'" style="width:100%;min-width:780px;height:auto;font-family:system-ui">'+g+'</svg></div>'}
 
-// D) Dona de estados y antigüedad del backlog
-function donut(){const E=[['Abierta','var(--bad)'],['En curso','var(--warn)'],['Cerrada','#3b82c4'],['Verificada','var(--ok)']],tot=S.sacs.length||1,C=2*Math.PI*42;let off=0,a='';
- E.forEach(([e,c])=>{const n=S.sacs.filter(s=>s.estado===e).length,l=n/tot*C;if(n)a+=`<circle r="42" cx="60" cy="60" fill="none" stroke="${c}" stroke-width="18" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"/>`;off+=l});
- return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><svg viewBox="0 0 120 120" width="150" style="font-family:system-ui">${a}${tx(60,59,S.sacs.length,'text-anchor="middle" font-size="22" font-weight="800" fill="var(--tx)"')}${tx(60,74,'SAC','text-anchor="middle" font-size="9" fill="var(--mut)"')}</svg>`+
- `<div>${E.map(([e,c])=>`<div style="margin:3px 0"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:6px"></i>${e}: <b>${S.sacs.filter(s=>s.estado===e).length}</b></div>`).join('')}</div></div>`}
+// Dona de estados con extrusión 3D
+function donut(){const E=[['Abierta','bad'],['En curso','warn'],['Cerrada','pri'],['Verificada','ok']],tot=S.sacs.length||1,C=2*Math.PI*42;let off=0,a='',b='';
+ E.forEach(([e,k])=>{const n=S.sacs.filter(s=>s.estado===e).length,l=n/tot*C;if(n){const da='stroke-dasharray="'+l+' '+(C-l)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 60 60)"';b+='<circle r="42" cx="60" cy="60" fill="none" stroke="'+C3[k][2]+'" stroke-width="18" '+da+'/>';a+='<circle r="42" cx="60" cy="60" fill="none" stroke="'+C3[k][1]+'" stroke-width="18" '+da+'/><circle r="48" cx="60" cy="60" fill="none" stroke="'+C3[k][0]+'" stroke-width="2" stroke-opacity=".8" '+da+'/>'}off+=l});
+ return '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><svg viewBox="0 0 120 130" width="160" style="font-family:system-ui">'+defs3()+'<g filter="url(#sh)"><g transform="translate(0,7)">'+b+'</g>'+a+'</g><circle cx="60" cy="60" r="32" fill="var(--card)" stroke="var(--bd)"/>'+tx(60,59,S.sacs.length,'text-anchor="middle" font-size="22" font-weight="800" fill="var(--tx)"')+tx(60,74,'SAC','text-anchor="middle" font-size="9" fill="var(--mut)"')+'</svg>'+
+ '<div>'+E.map(([e,k])=>'<div style="margin:4px 0"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,'+C3[k][0]+','+C3[k][2]+');box-shadow:1px 2px 3px rgba(0,0,0,.35);margin-right:7px"></i>'+e+': <b>'+S.sacs.filter(s=>s.estado===e).length+'</b></div>').join('')+'</div></div>'}
 function aging(){const T=hoy(),op=S.sacs.filter(s=>s.estado==='Abierta'||s.estado==='En curso'),B=[['0–2 días',0,2,'var(--ok)'],['3–7 días',3,7,'#8ab34a'],['8–15 días',8,15,'var(--warn)'],['16+ días',16,9999,'var(--bad)']].map(b=>({t:b[0],c:b[3],n:op.filter(s=>{const d=dias(s.fecha,T);return d>=b[1]&&d<=b[2]}).length})),mx=Math.max(1,...B.map(b=>b.n));
  return B.map(b=>`<div class="bar"><em>${b.t}</em><i style="width:${b.n/mx*55}%;background:${b.c}"></i><b>${b.n}</b></div>`).join('')}
 function vDash(){const s=stats(),cl=S.sacs.filter(isC),ot=cl.length?Math.round(cl.filter(x=>x.fin&&x.fin<=x.fechaLimite).length/cl.length*100):0,cumpl=S.sacs.length?Math.round((s.verif+s.porVerif)/S.sacs.length*100):0;
  const k=(n,t,c)=>`<div class="kpi"><b ${c?`style="color:${c}"`:''}>${n}</b><span>${t}</span></div>`;
  return `${rh('DASHBOARD DE SAC','Solicitudes de Acciones Correctivas · '+hoy())}<div class="noprint" style="text-align:right;margin-bottom:8px"><button class="btn ghost" onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Pantalla completa</button> <button class="btn acc" onclick="print()">📄 Exportar PDF</button></div>
  <div class="kpis">${k(s.total,'SAC totales')}${k(s.abiertas,'Abiertas','var(--bad)')}${k(s.curso,'En curso','var(--warn)')}${k(s.porVerif,'Por verificar','#3b82c4')}${k(s.verif,'Verificadas','var(--ok)')}${k(s.venc,'Vencidas','var(--bad)')}${k(cumpl+'%','Cierre global')}${k(ot+'%','Cerradas en plazo',ot>=80?'var(--ok)':ot>=60?'var(--warn)':'var(--bad)')}${k(s.prom,'Días prom. cierre')}${k(s.horas,'Horas invertidas')}</div>
- <div class="card"><div class="ct"><b>Avance de SAC · meses · semanas · semana en curso</b><span>Un solo gráfico · la semana en curso se actualiza sola</span></div>${chartUnified()}</div>
+ <div class="card"><div class="ct"><b>Avance de SAC · 3 meses · semanas del mes · semana en curso (Lun–Dom)</b><span>Un solo gráfico · la semana en curso se actualiza sola</span></div>${chartUnified()}</div>
  <div class="row"><div class="card"><div class="ct"><b>Estado actual</b></div>${donut()}</div><div class="card"><div class="ct"><b>Antigüedad de pendientes</b></div>${aging()}</div></div>
  <div class="row"><div class="card"><b>Por tipo</b>${bars(count(S.sacs,'tipo'))}</div><div class="card"><b>Por planta / cliente</b>${bars(count(S.sacs,'planta'))}</div><div class="card"><b>Por prioridad</b>${bars(count(S.sacs.map(x=>({p:'Prioridad '+x.prioridad})),'p'))}</div></div>`}
 function drawDash(){}
