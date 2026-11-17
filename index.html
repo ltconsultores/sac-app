@@ -44,7 +44,14 @@ textarea{min-height:80px}
 .toast{position:fixed;top:64px;left:12px;right:12px;background:#1f3a5f;color:#fff;border-radius:10px;padding:12px;z-index:9}
 .big{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .rh{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid var(--acc);padding-bottom:8px;margin-bottom:8px;text-align:center}.rh img{height:56px;max-width:110px;object-fit:contain}
-@media print{header,nav,.noprint{display:none}body{background:#fff;color:#000;padding:0}.card{break-inside:avoid}}
+.gal{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.gal img{width:calc(33.3% - 4px);aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:zoom-in}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:20;display:flex;align-items:center;justify-content:center}.lb img{max-width:96%;max-height:96%}
+.rh.pr-only{display:none}.sc{overflow-x:auto}.sc svg{display:block}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin:4px 0 6px}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.bar i{background:linear-gradient(90deg,var(--pri),var(--acc))}
+.ct{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.ct b{font-size:15px}.ct span{font-size:12px;color:var(--mut)}
+.chip{display:inline-block;border-radius:20px;padding:2px 9px;font-size:12px;font-weight:700;color:#fff}
+@media print{:root{--bg:#fff;--card:#fff;--tx:#111;--mut:#555;--pri:#1f3a5f;--bd:#ccc}header,nav,.noprint{display:none!important}body{background:#fff;color:#000;padding:0}.card,.kpi{break-inside:avoid}.rh.pr-only{display:flex}.sc{overflow:visible}.sc svg{min-width:0!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.gal img{width:31%}}
 </style>
 </head>
 <body>
@@ -53,7 +60,7 @@ textarea{min-height:80px}
 <nav id="nav"></nav>
 <script>
 // ===== Datos =====
-const AREAS=['Mantenimiento','QC','Operaciones','Seguridad','Administración','Senacsa','Otros'];
+const AREAS=['Mantenimiento','QC','Operaciones','Seguridad','Administración','Gerencia','Senacsa','Otros'];
 const TIPOS=['Electricidad','Mecánica','Refrigeración','Civil','Otros Servicios'];
 const PRIO={1:{t:'1 · Urgente (1-2 días)',d:2},2:{t:'2 · Normal (3-15 días)',d:15},3:{t:'3 · Programable (16-60 días)',d:60}};
 const K='sac_v1';
@@ -61,7 +68,7 @@ const SERVER='https://script.google.com/macros/s/AKfycbwQe6bv-fOp31vdA8A9voOchim
 let S=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s){if(!s.url)s.url=SERVER;if(!s.queue)s.queue=[];return s}}catch(e){}return{user:{nombre:'',email:'',area:'',rol:'tecnico',planta:''},url:SERVER,queue:[],plantas:['Planta 1'],sacs:[],notifs:[],seq:0}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){toast('Memoria llena: reduce fotos')}}
-const $=s=>document.querySelector(s);const hoy=()=>new Date().toISOString().slice(0,10);
+const $=s=>document.querySelector(s);const hoy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
 const dias=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -104,13 +111,18 @@ function vForm(){return `<div class="card"><h3 style="margin-top:0">Nueva SAC</h
 <label>Tipo de solicitud</label><select id="f_tipo">${TIPOS.map(t=>`<option>${t}</option>`).join('')}</select>
 <label>Prioridad</label><select id="f_pr">${Object.entries(PRIO).map(([k,v])=>`<option value="${k}" ${k==2?'selected':''}>${v.t}</option>`).join('')}</select>
 <label>Describa el servicio / acción correctiva solicitada</label><textarea id="f_desc"></textarea>
-<label>Foto del hallazgo (opcional)</label><input type="file" accept="image/*" capture="environment" id="f_foto">
+<label>Fotos de la avería / hallazgo (cámara o galería, hasta 6)</label><input type="file" accept="image/*" multiple id="f_foto">
 <label>¿Requiere repuestos o materiales?</label><select id="f_rep"><option>No</option><option>Sí</option></select>
 <button class="btn acc full" onclick="crear()">Enviar SAC</button></div>`}
-function img(file,cb){if(!file)return cb('');const r=new FileReader();r.onload=e=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas'),m=800,k=Math.min(1,m/Math.max(i.width,i.height));c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.6))};i.src=e.target.result};r.readAsDataURL(file)}
+function img1(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas'),k=Math.min(1,1000/Math.max(i.width,i.height));c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.65))};i.onerror=()=>res('');i.src=e.target.result};r.onerror=()=>res('');r.readAsDataURL(file)})}
+async function imgs(files){const o=[];for(const f of [...files].slice(0,6))o.push(await img1(f));return o.filter(Boolean)}
+const FL=x=>Array.isArray(x)?x:(x?[x]:[]);
+const gal=a=>FL(a).length?`<div class="gal">${FL(a).map(u=>`<img src="${u}" onclick="zoom(this.src)">`).join('')}</div>`:'';
+function zoom(u){const d=document.createElement('div');d.className='lb';d.innerHTML=`<img src="${u}">`;d.onclick=()=>d.remove();document.body.appendChild(d)}
+const rh=(t,sub,cls='')=>`<div class="rh ${cls}"><img src="${document.querySelector('header .lg').src}"><div><b>${t}</b><br><span class="meta">${sub}</span></div>${S.logoCliente?`<img src="${S.logoCliente}">`:'<span style="width:44px"></span>'}</div>`;
 function crear(){
  const eq=$('#f_eq').value.trim(),d=$('#f_desc').value.trim();if(!eq||!d)return toast('Completa equipo y descripción');
- img($('#f_foto').files[0],foto=>{
+ imgs($('#f_foto').files).then(foto=>{
   const pr=+$('#f_pr').value;const id='SAC-'+hoy().slice(2).replace(/-/g,'')+'-'+(100+Math.floor(Math.random()*900));const pl=$('#f_planta').value.trim()||'Planta 1';if(!S.plantas.includes(pl))S.plantas.push(pl);
   S.sacs.push({id,fecha:hoy(),planta:pl,de:$('#f_de').value.trim(),dpto:$('#f_dpto').value.trim(),para:$('#f_para').value.trim(),equipo:eq,tipo:$('#f_tipo').value,prioridad:pr,fechaLimite:addD(hoy(),PRIO[pr].d),descripcion:d,foto,repuestos:$('#f_rep').value==='Sí',fechaSolRep:'',estado:'Abierta',tecnico:'',
   inicio:'',fin:'',personas:'',hNorm:'',hExtra:'',conforme:'',comentarios:'',verif:null,hist:[{f:new Date().toISOString(),u:S.user.nombre,a:'Creada'}]});
@@ -118,16 +130,16 @@ function crear(){
 }
 // ===== Detalle / avance / cierre =====
 function vDet(){const s=S.sacs.find(x=>x.id===cur);if(!s)return'';const r=S.user.rol;
- let h=`<button class="btn ghost" onclick="go('list')">← Volver</button><div class="card p${s.prioridad}" style="margin-top:8px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 style="margin:0">${s.id}</h3><span class="tag s-${s.estado}">${s.estado}</span></div>
-<p><b>${esc(s.equipo)}</b> · ${esc(s.tipo)} · ${esc(s.planta)}</p><p>${esc(s.descripcion)}</p>${s.foto?`<img class="ph" src="${s.foto}">`:''}
-<div class="meta">De: ${esc(s.de)} (${esc(s.dpto)}) → Para: ${esc(s.para)}<br>Emitida ${s.fecha} · Límite ${s.fechaLimite}${vencida(s)?' <b style="color:var(--bad)">VENCIDA</b>':''}<br>Repuestos: ${s.repuestos?'Sí':'No'}${s.inicio?`<br>Inicio ${s.inicio}`:''}${s.fin?` · Fin ${s.fin}`:''}${s.personas?`<br>${s.personas} pers. · ${s.hNorm||0} h normales + ${s.hExtra||0} h extras = <b>${(+s.hNorm||0)+(+s.hExtra||0)} h</b>`:''}${s.conforme?`<br>Conforme: ${s.conforme}`:''}${s.comentarios?`<br>Comentarios: ${esc(s.comentarios)}`:''}</div></div>`;
+ let h=`<div class="noprint"><button class="btn ghost" onclick="go('list')">← Volver</button> <button class="btn acc" style="float:right" onclick="print()">📄 Exportar PDF</button></div><div class="card p${s.prioridad}" style="margin-top:8px">${rh('SOLICITUD DE ACCIÓN CORRECTIVA','Orden de servicio · '+esc(s.planta),'pr-only')}<div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 style="margin:0">${s.id}</h3><span class="tag s-${s.estado}">${s.estado}</span></div>
+<p><b>${esc(s.equipo)}</b> · ${esc(s.tipo)} · ${esc(s.planta)}</p><p>${esc(s.descripcion)}</p>${FL(s.foto).length?`<div class="meta"><b>Evidencia de la avería</b></div>${gal(s.foto)}`:''}
+<div class="meta">De: ${esc(s.de)} (${esc(s.dpto)}) → Para: ${esc(s.para)}<br>Emitida ${s.fecha} · Límite ${s.fechaLimite}${vencida(s)?' <b style="color:var(--bad)">VENCIDA</b>':''}<br>Repuestos: ${s.repuestos?'Sí':'No'}${s.inicio?`<br>Inicio ${s.inicio}`:''}${s.fin?` · Fin ${s.fin}`:''}${s.personas?`<br>${s.personas} pers. · ${s.hNorm||0} h normales + ${s.hExtra||0} h extras = <b>${(+s.hNorm||0)+(+s.hExtra||0)} h</b>`:''}${s.conforme?`<br>Conforme: ${s.conforme}`:''}${s.comentarios?`<br>Comentarios: ${esc(s.comentarios)}`:''}</div>${FL(s.fotoCierre).length?`<div class="meta" style="margin-top:8px"><b>Evidencia de culminación / cierre</b></div>${gal(s.fotoCierre)}`:''}</div>`;
  if(s.estado==='Abierta'||s.estado==='En curso'){
   h+=`<div class="card"><h3 style="margin-top:0">${s.estado==='Abierta'?'Tomar / reportar avance':'Reportar avance o cerrar'}</h3>
   <label>Técnico responsable</label><input id="d_tec" value="${esc(s.tecnico||S.user.nombre)}">
   <div class="row"><div><label>Fecha real de inicio</label><input type="date" id="d_ini" value="${s.inicio||hoy()}"></div><div><label>Fecha de terminación</label><input type="date" id="d_fin" value="${s.fin||''}"></div></div>
   <div class="row"><div><label>Cant. personas</label><input type="number" id="d_per" value="${s.personas}"></div><div><label>Hrs normales</label><input type="number" id="d_hn" value="${s.hNorm}"></div><div><label>Hrs extras</label><input type="number" id="d_he" value="${s.hExtra}"></div></div>
   <label>Comentarios / avance</label><textarea id="d_com">${esc(s.comentarios)}</textarea>
-  <label>Foto de evidencia</label><input type="file" accept="image/*" capture="environment" id="d_foto">
+  <label>Fotos de evidencia / culminación (cámara o galería, hasta 6)</label><input type="file" accept="image/*" multiple id="d_foto">
   <label>Servicio ejecutado conforme (para cerrar)</label><select id="d_conf"><option value="">—</option><option>Sí</option><option>No</option></select>
   <div class="row"><button class="btn full" onclick="avance('${s.id}',false)">Guardar avance</button><button class="btn ok full" onclick="avance('${s.id}',true)">Cerrar SAC</button></div></div>`}
  if(s.estado==='Cerrada'&&r!=='tecnico'){h+=`<div class="card"><h3 style="margin-top:0">Verificación del supervisor</h3><p class="meta">Verifica en sitio la ejecución y valida con QC.</p>
@@ -136,9 +148,9 @@ function vDet(){const s=S.sacs.find(x=>x.id===cur);if(!s)return'';const r=S.user
  if(s.verif)h+=`<div class="card"><b>Verificación:</b> ${s.verif.ok?'✔ Aprobada':'✖ Rechazada'} · ${s.verif.fecha} · Sup: ${esc(s.verif.sup)} · QC: ${esc(s.verif.qc)}<br>${esc(s.verif.obs)}</div>`;
  h+=`<div class="card"><b>Historial</b><div class="tl">${s.hist.map(e=>`<div>${e.f.slice(0,16).replace('T',' ')} · <b>${esc(e.u)}</b> · ${esc(e.a)}</div>`).join('')}</div></div>`;return h}
 function avance(id,cerrar){const s=S.sacs.find(x=>x.id===id);
- const fin=()=>img($('#d_foto').files[0],foto=>{
+ const fin=()=>imgs($('#d_foto').files).then(foto=>{
   Object.assign(s,{tecnico:$('#d_tec').value.trim(),inicio:$('#d_ini').value,fin:$('#d_fin').value,personas:$('#d_per').value,hNorm:$('#d_hn').value,hExtra:$('#d_he').value,comentarios:$('#d_com').value.trim()});
-  if(foto)s.fotoCierre=foto;
+  if(foto.length)s.fotoCierre=FL(s.fotoCierre).concat(foto);
   if(cerrar){if(!$('#d_conf').value)return toast('Indica si quedó conforme');s.conforme=$('#d_conf').value;if(!s.fin)s.fin=hoy();s.estado='Cerrada';hist(s,'Cerrada por técnico (conforme: '+s.conforme+')');
    notif('supervisor',`${s.id} CERRADA por ${s.tecnico||S.user.nombre}: verificar en sitio y validar con QC`,s.id);toast('SAC cerrada. Se avisó al supervisor');}
   else{s.estado='En curso';hist(s,'Avance: '+(s.comentarios||'sin comentario').slice(0,80));toast('Avance guardado')}
@@ -161,11 +173,100 @@ function stats(a,b){const L=S.sacs.filter(s=>(!a||s.fecha>=a)&&(!b||s.fecha<=b))
  const t=cerr.filter(s=>s.fin).map(s=>dias(s.fecha,s.fin));return{L,total:L.length,abiertas:S.sacs.filter(s=>s.estado==='Abierta').length,curso:S.sacs.filter(s=>s.estado==='En curso').length,porVerif:S.sacs.filter(s=>s.estado==='Cerrada').length,verif:S.sacs.filter(s=>s.estado==='Verificada').length,venc:S.sacs.filter(vencida).length,prom:t.length?(t.reduce((x,y)=>x+y,0)/t.length).toFixed(1):'–',horas:S.sacs.reduce((x,s)=>x+(+s.hNorm||0)+(+s.hExtra||0),0)}}
 function count(L,k){const m={};L.forEach(s=>m[s[k]]=(m[s[k]]||0)+1);return Object.entries(m).sort((a,b)=>b[1]-a[1])}
 function bars(e){const mx=Math.max(1,...e.map(x=>x[1]));return e.map(x=>`<div class="bar"><em>${esc(x[0])}</em><i style="width:${x[1]/mx*55}%"></i>${x[1]}</div>`).join('')||'<span class="meta">Sin datos</span>'}
-function vDash(){const s=stats();const cumpl=S.sacs.length?Math.round((s.verif+s.porVerif)/S.sacs.length*100):0;
- return `<h3>Dashboard SAC <button class="btn ghost noprint" style="float:right;padding:6px 10px" onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Pantalla completa</button></h3>
- <div class="kpis"><div class="kpi"><b>${s.total}</b><span>SAC totales</span></div><div class="kpi"><b style="color:var(--bad)">${s.abiertas}</b><span>Abiertas</span></div><div class="kpi"><b style="color:var(--warn)">${s.curso}</b><span>En curso</span></div><div class="kpi"><b style="color:#3b82c4">${s.porVerif}</b><span>Por verificar</span></div><div class="kpi"><b style="color:var(--ok)">${s.verif}</b><span>Verificadas</span></div><div class="kpi"><b style="color:var(--bad)">${s.venc}</b><span>Vencidas</span></div><div class="kpi"><b>${cumpl}%</b><span>Cumplimiento</span></div><div class="kpi"><b>${s.prom}</b><span>Días prom. cierre</span></div><div class="kpi"><b>${s.horas}</b><span>Horas invertidas</span></div></div>
- <div class="card"><b>Por estado</b>${bars(count(S.sacs,'estado'))}</div><div class="card"><b>Por tipo</b>${bars(count(S.sacs,'tipo'))}</div><div class="card"><b>Por planta</b>${bars(count(S.sacs,'planta'))}</div><div class="card"><b>Por prioridad</b>${bars(count(S.sacs.map(x=>({p:'Prioridad '+x.prioridad})),'p'))}</div>`}
+// ===== Dashboard técnico (SVG propio, sin librerías) =====
+const isC=s=>s.estado==='Cerrada'||s.estado==='Verificada';
+const cd=s=>isC(s)&&s.fin?s.fin:null;
+const dow=s=>new Date(s+'T00:00:00Z').getUTCDay();
+const monOf=s=>addD(s,dow(s)===0?-6:1-dow(s));
+const bk=s=>dow(s)===0?addD(s,-1):s; // el domingo se suma al sábado
+const ddmm=s=>s.slice(8)+'/'+s.slice(5,7);
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const addM=(ym,n)=>{const[y,m]=ym.split('-').map(Number),t=y*12+m-1+n;return Math.floor(t/12)+'-'+String(t%12+1).padStart(2,'0')};
+const DL=['L','M','M','J','V','S'];
+const tx=(x,y,t,o='')=>`<text x="${x}" y="${y}" ${o}>${t}</text>`;
+function lr(p){const n=p.length;if(n<2)return null;let sx=0,sy=0,sxy=0,sxx=0;p.forEach(q=>{sx+=q.x;sy+=q.y;sxy+=q.x*q.y;sxx+=q.x*q.x});const d=n*sxx-sx*sx;if(!d)return null;const m=(n*sxy-sx*sy)/d;return{m,b:(sy-m*sx)/n}}
+const arrow=m=>m>0.05?'▲':m<-0.05?'▼':'►';
+const legend=a=>`<div class="leg">${a.map(x=>`<span>${x[2]||'<i style="background:'+x[1]+'"></i>'}${x[0]}</span>`).join('')}</div>`;
+const dash=c=>`<svg width="18" height="8" style="vertical-align:middle;margin-right:4px"><line x1="0" x2="18" y1="4" y2="4" stroke="${c}" stroke-width="2.2" stroke-dasharray="4 3"/></svg>`;
+const line=c=>`<svg width="18" height="8" style="vertical-align:middle;margin-right:4px"><line x1="0" x2="18" y1="4" y2="4" stroke="${c}" stroke-width="2.4"/></svg>`;
+
+// A) Avance diario Lun–Sáb, ventana móvil de 3 semanas
+function chartDaily(){
+ const T=hoy(),cm=monOf(T),wk=[-14,-7,0].map(n=>addD(cm,n)),days=[];
+ wk.forEach((w,wi)=>{for(let i=0;i<6;i++)days.push({d:addD(w,i),wi,i})});
+ days.forEach(x=>{x.fut=x.d>T;x.n=S.sacs.filter(s=>bk(s.fecha)===x.d).length;x.c=S.sacs.filter(s=>cd(s)&&bk(cd(s))===x.d).length;const end=x.i===5?addD(x.d,1):x.d;x.b=S.sacs.filter(s=>s.fecha<=end&&!(cd(s)&&cd(s)<=end)).length});
+ const W=800,H=330,L=34,R=36,Tp=24,B=62,gap=16,sw=(W-L-R-2*gap)/18,ph=H-Tp-B;
+ const mx=Math.max(3,...days.map(d=>Math.max(d.n,d.c)))+1,mb=Math.max(3,...days.filter(d=>!d.fut).map(d=>d.b))+1;
+ const X=k=>L+k*sw+Math.floor(k/6)*gap,yl=v=>Tp+ph*(1-v/mx),yr=v=>Tp+ph*(1-v/mb),bw=sw*.36,cl=v=>Math.max(0,Math.min(mx,v));
+ let g='';
+ wk.forEach((w,wi)=>{const x0=X(wi*6)-3,ww=sw*6+3;g+=`<rect x="${x0}" y="${Tp-6}" width="${ww}" height="${ph+12}" rx="8" fill="${wi===2?'var(--pri)':'var(--mut)'}" opacity="${wi===2?.12:.06}"/>`+tx(x0+ww/2,H-14,`Sem ${ddmm(w)}–${ddmm(addD(w,5))}${wi===2?' · actual':''}`,'text-anchor="middle" font-size="11" font-weight="700" fill="var(--tx)"')});
+ for(let i=0;i<=4;i++){const v=Math.round(mx*i/4),y=yl(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(L-6,y+3,v,'text-anchor="end" font-size="9" fill="var(--mut)"')+tx(W-R+6,yr(mb*i/4)+3,Math.round(mb*i/4),'font-size="9" fill="var(--pri)"')}
+ days.forEach((d,k)=>{const x=X(k);g+=tx(x+sw/2,H-34,DL[d.i],`text-anchor="middle" font-size="10" fill="var(--mut)" ${d.fut?'opacity=".4"':''}`);if(d.fut)return;
+  const x1=x+sw*.1,x2=x1+bw+2;
+  if(d.n)g+=`<rect x="${x1}" y="${yl(d.n)}" width="${bw}" height="${yl(0)-yl(d.n)}" rx="2" fill="var(--acc)"/>`+tx(x1+bw/2,yl(d.n)-3,d.n,'text-anchor="middle" font-size="9" font-weight="700" fill="var(--acc)"');
+  if(d.c)g+=`<rect x="${x2}" y="${yl(d.c)}" width="${bw}" height="${yl(0)-yl(d.c)}" rx="2" fill="var(--ok)"/>`+tx(x2+bw/2,yl(d.c)-3,d.c,'text-anchor="middle" font-size="9" font-weight="700" fill="var(--ok)"')});
+ const real=days.map((d,k)=>({...d,k})).filter(d=>!d.fut);
+ // tendencias lineales (demanda vs capacidad de cierre)
+ const tn=lr(real.map(d=>({x:d.k,y:d.n}))),tc=lr(real.map(d=>({x:d.k,y:d.c})));
+ const k0=real[0]?.k||0,k1=real.length?real[real.length-1].k:0,cx=k=>X(k)+sw/2;
+ if(tn)g+=`<line x1="${cx(k0)}" x2="${cx(k1)}" y1="${yl(cl(tn.m*k0+tn.b))}" y2="${yl(cl(tn.m*k1+tn.b))}" stroke="var(--acc)" stroke-width="2" stroke-dasharray="6 4"/>`;
+ if(tc)g+=`<line x1="${cx(k0)}" x2="${cx(k1)}" y1="${yl(cl(tc.m*k0+tc.b))}" y2="${yl(cl(tc.m*k1+tc.b))}" stroke="var(--ok)" stroke-width="2" stroke-dasharray="6 4"/>`;
+ // backlog acumulado (eje derecho)
+ if(real.length){g+=`<polyline fill="none" stroke="var(--pri)" stroke-width="2.4" points="${real.map(d=>cx(d.k)+','+yr(d.b)).join(' ')}"/>`+real.map(d=>`<circle cx="${cx(d.k)}" cy="${yr(d.b)}" r="3" fill="var(--card)" stroke="var(--pri)" stroke-width="2"/>`+((d.i===5||d.k===k1)?tx(cx(d.k),yr(d.b)-8,d.b,'text-anchor="middle" font-size="10" font-weight="800" fill="var(--pri)"'):'')).join('')}
+ const leg=legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Pendientes acumuladas (eje der.)',0,line('var(--pri)')],['Tendencia nuevas '+(tn?arrow(tn.m):'')+' '+(tn?(tn.m*6).toFixed(1)+'/sem':''),0,dash('var(--acc)')],['Tendencia cierres '+(tc?arrow(tc.m):'')+' '+(tc?(tc.m*6).toFixed(1)+'/sem':''),0,dash('var(--ok)')]]);
+ return leg+`<div class="sc"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:680px;height:auto;font-family:system-ui">${g}</svg></div>`}
+
+// B) Cierres acumulados por día — comparativo de las 3 semanas
+function chartCum(){
+ const T=hoy(),cm=monOf(T),wk=[-14,-7,0].map(n=>addD(cm,n));
+ const ser=wk.map(w=>[0,1,2,3,4,5].map(i=>{const d=addD(w,i);if(d>T)return null;const end=i===5?addD(d,1):d;return S.sacs.filter(s=>cd(s)&&cd(s)>=w&&cd(s)<=end).length}));
+ const bench=[0,1,2,3,4,5].map(i=>ser[0][i]!=null&&ser[1][i]!=null?(ser[0][i]+ser[1][i])/2:null);
+ const W=420,H=270,L=32,R=44,Tp=22,B=34,pw=W-L-R,ph=H-Tp-B,mx=Math.max(3,...ser.flat().filter(v=>v!=null),...bench.filter(v=>v!=null))+1;
+ const X=i=>L+pw*i/5,Y=v=>Tp+ph*(1-v/mx);let g='';
+ for(let i=0;i<=4;i++){const v=Math.round(mx*i/4),y=Y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(L-6,y+3,v,'text-anchor="end" font-size="9" fill="var(--mut)"')}
+ ['Lun','Mar','Mié','Jue','Vie','Sáb'].forEach((t,i)=>g+=tx(X(i),H-14,t,'text-anchor="middle" font-size="10" fill="var(--mut)"'));
+ const col=['#8a9bb5','#3b82c4','var(--acc)'],nm=wk.map((w,i)=>['Sem '+ddmm(w),'Sem '+ddmm(w),'Sem actual '+ddmm(w)][i]);
+ const pts=a=>a.map((v,i)=>v==null?null:X(i)+','+Y(v)).filter(Boolean).join(' ');
+ if(bench.some(v=>v!=null))g+=`<polyline fill="none" stroke="var(--mut)" stroke-width="2" stroke-dasharray="3 4" points="${pts(bench)}"/>`;
+ ser.forEach((a,wi)=>{g+=`<polyline fill="none" stroke="${col[wi]}" stroke-width="${wi===2?3:2}" opacity="${wi===2?1:.85}" points="${pts(a)}"/>`;a.forEach((v,i)=>{if(v==null)return;g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${wi===2?3.5:2.5}" fill="${col[wi]}"/>`;if(wi===2||i===5)g+=tx(X(i),Y(v)-7+(wi===1&&i===5?-9:0),v,`text-anchor="middle" font-size="10" font-weight="800" fill="${col[wi]}"`)})});
+ return legend([[nm[0],col[0]],[nm[1],col[1]],[nm[2],col[2]],['Promedio sem. anteriores',0,dash('var(--mut)')]])+`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:560px;display:block;margin:auto;height:auto;font-family:system-ui">${g}</svg>`}
+
+// C) Mensual — ventana móvil de 3 meses
+function chartMonthly(){
+ const ym0=hoy().slice(0,7),M=[-2,-1,0].map(n=>addM(ym0,n)).map(ym=>{const n=S.sacs.filter(s=>s.fecha.slice(0,7)===ym).length,cs=S.sacs.filter(s=>cd(s)&&cd(s).slice(0,7)===ym),c=cs.length,ok=cs.filter(s=>s.fin<=s.fechaLimite).length,b=S.sacs.filter(s=>s.fecha<=ym+'-31'&&!(cd(s)&&cd(s)<=ym+'-31')).length;return{ym,n,c,b,sla:c?Math.round(ok/c*100):null}});
+ const W=520,H=310,L=34,R=40,Tp=22,B=74,sw=(W-L-R)/3,ph=H-Tp-B,mx=Math.max(3,...M.map(m=>Math.max(m.n,m.c)))+1,mb=Math.max(3,...M.map(m=>m.b))+1;
+ const Y=v=>Tp+ph*(1-v/mx),Yr=v=>Tp+ph*(1-v/mb),cx=i=>L+sw*i+sw/2,bw=sw*.26;let g='';
+ for(let i=0;i<=4;i++){const y=Y(mx*i/4);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--bd)" stroke-dasharray="2 4"/>`+tx(L-6,y+3,Math.round(mx*i/4),'text-anchor="end" font-size="9" fill="var(--mut)"')+tx(W-R+6,Yr(mb*i/4)+3,Math.round(mb*i/4),'font-size="9" fill="var(--pri)"')}
+ M.forEach((m,i)=>{const x1=cx(i)-bw-2,x2=cx(i)+2,cur=i===2;
+  g+=`<rect x="${x1}" y="${Y(m.n)}" width="${bw}" height="${Y(0)-Y(m.n)}" rx="3" fill="var(--acc)"/>`+tx(x1+bw/2,Y(m.n)-5,m.n,'text-anchor="middle" font-size="12" font-weight="800" fill="var(--acc)"')+
+     `<rect x="${x2}" y="${Y(m.c)}" width="${bw}" height="${Y(0)-Y(m.c)}" rx="3" fill="var(--ok)"/>`+tx(x2+bw/2,Y(m.c)-5,m.c,'text-anchor="middle" font-size="12" font-weight="800" fill="var(--ok)"')+
+     tx(cx(i),H-48,MES[+m.ym.slice(5)-1].toUpperCase()+' '+m.ym.slice(2,4)+(cur?' · en curso':''),'text-anchor="middle" font-size="12" font-weight="700" fill="var(--tx)"')+
+     tx(cx(i),H-30,m.sla==null?'En plazo: –':'En plazo: '+m.sla+'%','text-anchor="middle" font-size="11" font-weight="700" fill="'+(m.sla==null?'var(--mut)':m.sla>=80?'var(--ok)':m.sla>=60?'var(--warn)':'var(--bad)')+'"')});
+ const tc=lr(M.map((m,i)=>({x:i,y:m.c}))),tn=lr(M.map((m,i)=>({x:i,y:m.n}))),tb=lr(M.map((m,i)=>({x:i,y:m.b})));
+ const cl=v=>Math.max(0,Math.min(mx,v));
+ if(tn)g+=`<line x1="${cx(0)}" x2="${cx(2)}" y1="${Y(cl(tn.b))}" y2="${Y(cl(tn.m*2+tn.b))}" stroke="var(--acc)" stroke-width="2" stroke-dasharray="6 4"/>`;
+ if(tc)g+=`<line x1="${cx(0)}" x2="${cx(2)}" y1="${Y(cl(tc.b))}" y2="${Y(cl(tc.m*2+tc.b))}" stroke="var(--ok)" stroke-width="2" stroke-dasharray="6 4"/>`;
+ g+=`<polyline fill="none" stroke="var(--pri)" stroke-width="2.6" points="${M.map((m,i)=>cx(i)+','+Yr(m.b)).join(' ')}"/>`+M.map((m,i)=>`<circle cx="${cx(i)}" cy="${Yr(m.b)}" r="4" fill="var(--card)" stroke="var(--pri)" stroke-width="2.4"/>`+tx(cx(i),Yr(m.b)-9,m.b,'text-anchor="middle" font-size="11" font-weight="800" fill="var(--pri)"')).join('');
+ return legend([['Nuevas','var(--acc)'],['Cerradas','var(--ok)'],['Pendientes a fin de mes (eje der.)',0,line('var(--pri)')],['Tend. nuevas '+(tn?arrow(tn.m)+' '+tn.m.toFixed(1)+'/mes':''),0,dash('var(--acc)')],['Tend. cierres '+(tc?arrow(tc.m)+' '+tc.m.toFixed(1)+'/mes':''),0,dash('var(--ok)')]])+`<div class="sc"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:480px;height:auto;font-family:system-ui">${g}</svg></div>`}
+
+// D) Dona de estados y antigüedad del backlog
+function donut(){const E=[['Abierta','var(--bad)'],['En curso','var(--warn)'],['Cerrada','#3b82c4'],['Verificada','var(--ok)']],tot=S.sacs.length||1,C=2*Math.PI*42;let off=0,a='';
+ E.forEach(([e,c])=>{const n=S.sacs.filter(s=>s.estado===e).length,l=n/tot*C;if(n)a+=`<circle r="42" cx="60" cy="60" fill="none" stroke="${c}" stroke-width="18" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"/>`;off+=l});
+ return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><svg viewBox="0 0 120 120" width="150" style="font-family:system-ui">${a}${tx(60,59,S.sacs.length,'text-anchor="middle" font-size="22" font-weight="800" fill="var(--tx)"')}${tx(60,74,'SAC','text-anchor="middle" font-size="9" fill="var(--mut)"')}</svg>`+
+ `<div>${E.map(([e,c])=>`<div style="margin:3px 0"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:6px"></i>${e}: <b>${S.sacs.filter(s=>s.estado===e).length}</b></div>`).join('')}</div></div>`}
+function aging(){const T=hoy(),op=S.sacs.filter(s=>s.estado==='Abierta'||s.estado==='En curso'),B=[['0–2 días',0,2,'var(--ok)'],['3–7 días',3,7,'#8ab34a'],['8–15 días',8,15,'var(--warn)'],['16+ días',16,9999,'var(--bad)']].map(b=>({t:b[0],c:b[3],n:op.filter(s=>{const d=dias(s.fecha,T);return d>=b[1]&&d<=b[2]}).length})),mx=Math.max(1,...B.map(b=>b.n));
+ return B.map(b=>`<div class="bar"><em>${b.t}</em><i style="width:${b.n/mx*55}%;background:${b.c}"></i><b>${b.n}</b></div>`).join('')}
+function vDash(){const s=stats(),cl=S.sacs.filter(isC),ot=cl.length?Math.round(cl.filter(x=>x.fin&&x.fin<=x.fechaLimite).length/cl.length*100):0,cumpl=S.sacs.length?Math.round((s.verif+s.porVerif)/S.sacs.length*100):0;
+ const k=(n,t,c)=>`<div class="kpi"><b ${c?`style="color:${c}"`:''}>${n}</b><span>${t}</span></div>`;
+ return `${rh('DASHBOARD DE SAC','Solicitudes de Acciones Correctivas · '+hoy())}<div class="noprint" style="text-align:right;margin-bottom:8px"><button class="btn ghost" onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Pantalla completa</button> <button class="btn acc" onclick="print()">📄 Exportar PDF</button></div>
+ <div class="kpis">${k(s.total,'SAC totales')}${k(s.abiertas,'Abiertas','var(--bad)')}${k(s.curso,'En curso','var(--warn)')}${k(s.porVerif,'Por verificar','#3b82c4')}${k(s.verif,'Verificadas','var(--ok)')}${k(s.venc,'Vencidas','var(--bad)')}${k(cumpl+'%','Cierre global')}${k(ot+'%','Cerradas en plazo',ot>=80?'var(--ok)':ot>=60?'var(--warn)':'var(--bad)')}${k(s.prom,'Días prom. cierre')}${k(s.horas,'Horas invertidas')}</div>
+ <div class="card"><div class="ct"><b>Avance diario · Lun–Sáb · últimas 3 semanas</b><span>Barras: nuevas vs cerradas por día · el domingo se suma al sábado</span></div>${chartDaily()}</div>
+ <div class="card"><div class="ct"><b>Cierres acumulados por día · comparativo semanal</b><span>Semana actual vs 2 anteriores</span></div>${chartCum()}</div>
+ <div class="card"><div class="ct"><b>Evolución mensual · últimos 3 meses</b><span>Se desplaza al iniciar cada mes</span></div>${chartMonthly()}</div>
+ <div class="row"><div class="card"><div class="ct"><b>Estado actual</b></div>${donut()}</div><div class="card"><div class="ct"><b>Antigüedad de pendientes</b></div>${aging()}</div></div>
+ <div class="row"><div class="card"><b>Por tipo</b>${bars(count(S.sacs,'tipo'))}</div><div class="card"><b>Por planta / cliente</b>${bars(count(S.sacs,'planta'))}</div><div class="card"><b>Por prioridad</b>${bars(count(S.sacs.map(x=>({p:'Prioridad '+x.prioridad})),'p'))}</div></div>`}
 function drawDash(){}
+
 // ===== Reporte semanal =====
 let wk=hoy();
 function vRep(){const b=wk,a=addD(b,-6);const R=repData(a,b);
@@ -189,13 +290,16 @@ function vCfg(){const u=S.user;return `<div class="card"><h3 style="margin-top:0
  <button class="btn full" onclick="savePerfil()">Guardar</button></div>
  <div class="card"><b>Datos</b><div class="row" style="margin-top:8px"><button class="btn ghost" onclick="exp()">Exportar JSON</button><button class="btn ghost" onclick="$('#imp').click()">Importar</button><button class="btn ghost" onclick="demo()">Cargar datos demo</button></div><input type="file" id="imp" class="hide" accept=".json" onchange="imp(this.files[0])"><button class="btn bad full" onclick="if(confirm('¿Borrar todo?')){localStorage.removeItem(K);S=load();render()}">Borrar todos los datos</button></div>
  <div class="card meta">Versión prototipo: los datos se guardan en este teléfono. Para compartir entre técnicos y supervisor se necesita el servidor (siguiente fase).</div>`}
-function savePerfil(){S.url=$('#c_u').value.trim();S.user={nombre:$('#c_n').value.trim(),email:$('#c_e').value.trim().toLowerCase(),area:$('#c_a').value,rol:$('#c_r')?$('#c_r').value:S.user.rol,planta:$('#c_p').value.trim()};pull();if(S.user.planta&&!S.plantas.includes(S.user.planta))S.plantas.push(S.user.planta);save();
+function savePerfil(){S.url=$('#c_u').value.trim();S.user={nombre:$('#c_n').value.trim(),email:$('#c_e').value.trim().toLowerCase(),area:$('#c_a').value,rol:($('#c_a').value==='Gerencia'&&(!$('#c_r')||$('#c_r').value==='tecnico'))?'gerencia':($('#c_r')?$('#c_r').value:S.user.rol),planta:$('#c_p').value.trim()};pull();if(S.user.planta&&!S.plantas.includes(S.user.planta))S.plantas.push(S.user.planta);save();
  try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission()}catch(e){}go('list')}
 function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='sac_'+hoy()+'.json';a.click()}
 function imp(f){if(!f)return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);save();render();toast('Importado')}catch(x){toast('Archivo inválido')}};r.readAsText(f)}
-function demo(){const eq=[['Cámara de frío 2','Refrigeración'],['Cutter 3','Mecánica'],['Tablero principal','Electricidad'],['Piso sala de proceso','Civil'],['Túnel IQF','Refrigeración'],['Embutidora','Mecánica'],['Compresor NH3','Refrigeración'],['Iluminación empaque','Electricidad']];
- S.plantas=['Planta Cárnicos','Planta Chía'];S.seq=0;S.sacs=[];eq.forEach((e,i)=>{const pr=[1,2,3][i%3],f=addD(hoy(),-(i*2+1)),est=['Verificada','Cerrada','En curso','Abierta'][i%4];S.seq++;
- const s={id:'SAC-'+String(S.seq).padStart(4,'0'),fecha:f,planta:S.plantas[i%2],de:'Calidad',dpto:'QC',para:'Mantenimiento',equipo:e[0],tipo:e[1],prioridad:pr,fechaLimite:addD(f,PRIO[pr].d),descripcion:'Hallazgo reportado: requiere acción correctiva en '+e[0],foto:'',repuestos:i%3===0,estado:est,tecnico:'Téc. Demo',inicio:est==='Abierta'?'':f,fin:(est==='Cerrada'||est==='Verificada')?addD(f,1):'',personas:2,hNorm:4,hExtra:i%2,conforme:(est==='Cerrada'||est==='Verificada')?'Sí':'',comentarios:'',verif:est==='Verificada'?{ok:true,sup:'Sup. Demo',qc:'QC Demo',obs:'OK',fecha:addD(f,2)}:null,hist:[{f:f+'T08:00',u:'Demo',a:'Creada'}]};S.sacs.push(s)});save();go('dash')}
+function demo(){let sd=7;const rnd=()=>(sd=(sd*9301+49297)%233280)/233280;const T=hoy(),tipos=['Electricidad','Mecánica','Refrigeración','Civil','Otros Servicios'],eq=['Cámara de frío 2','Cutter 3','Tablero principal','Piso sala de proceso','Túnel IQF','Embutidora','Compresor NH3','Iluminación empaque','Caldera','Autoclave'];
+ S.plantas=['Planta Cárnicos','Planta Chía'];S.sacs=[];
+ for(let i=0;i<75;i++){const f=addD(T,-Math.floor(rnd()*95)),pr=[1,2,2,3][Math.floor(rnd()*4)],lim=addD(f,PRIO[pr].d),r=rnd(),e=eq[Math.floor(rnd()*eq.length)];
+  let est='Abierta',fin='';if(r<.72){fin=addD(f,Math.max(0,Math.round(rnd()*PRIO[pr].d*1.3)));if(fin>T){fin='';est='En curso'}else est=rnd()<.7?'Verificada':'Cerrada'}else if(r<.84)est='En curso';
+  S.sacs.push({id:'SAC-D'+String(i+1).padStart(3,'0'),fecha:f,planta:S.plantas[i%2],de:'Calidad',email:'',dpto:'QC',para:'Mantenimiento',equipo:e,tipo:tipos[Math.floor(rnd()*5)],prioridad:pr,fechaLimite:lim,descripcion:'Hallazgo reportado en '+e,foto:[],fotoCierre:[],repuestos:rnd()<.3,estado:est,tecnico:'Téc. Demo',inicio:est==='Abierta'?'':f,fin,personas:2,hNorm:2+Math.floor(rnd()*6),hExtra:Math.floor(rnd()*3),conforme:fin?'Sí':'',comentarios:'',verif:est==='Verificada'?{ok:true,sup:'Sup. Demo',qc:'QC Demo',obs:'OK',fecha:fin}:null,hist:[{f:f+'T08:00',u:'Demo',a:'Creada'}]})}
+ save();go('dash')}
 // ===== Sincronización con Google (Apps Script) =====
 const api=p=>fetch(S.url,{method:'POST',body:JSON.stringify(p),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());
 function enq(s){S.queue=(S.queue||[]).filter(o=>o.sac.id!==s.id);S.queue.push({action:'upsert',sac:JSON.parse(JSON.stringify(s))});save();render();flush()}
@@ -203,7 +307,7 @@ let busy=false;
 async function flush(){if(!S.url||busy||!navigator.onLine)return;busy=true;try{while(S.queue.length){const r=await api(S.queue[0]);if(r.error)throw r.error;S.queue.shift();save()}await pull()}catch(e){console.warn('sync',e)}busy=false}
 async function pull(){if(!S.url)return;try{const r=await fetch(S.url+'?email='+encodeURIComponent(S.user.email||'')).then(x=>x.json());if(!r.ok)return;
  const pend=new Set((S.queue||[]).map(o=>o.sac.id));const loc=S.sacs.filter(s=>pend.has(s.id));S.sacs=r.sacs.filter(s=>!pend.has(s.id)).concat(loc);
- S.user.rol=r.nivel;r.clientes.forEach(c=>{if(!S.plantas.includes(c.cliente))S.plantas.push(c.cliente);if(c.cliente===S.user.planta&&c.logo)S.logoCliente=c.logo});
+ S.user.rol=r.nivel;if(S.user.area==='Gerencia'&&S.user.rol==='tecnico')S.user.rol='gerencia';r.clientes.forEach(c=>{if(!S.plantas.includes(c.cliente))S.plantas.push(c.cliente);if(c.cliente===S.user.planta&&c.logo)S.logoCliente=c.logo});
  if(!r.logoLT){const lt=document.querySelector('header .lg').src;if(lt.startsWith('data:'))api({action:'logoLT',data:lt})}
  save();if(view!=='cfg')render()}catch(e){console.warn('pull',e)}}
 addEventListener('online',flush);setInterval(()=>S.url&&(S.queue.length?flush():pull()),60000);
