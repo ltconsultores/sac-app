@@ -39,6 +39,8 @@ textarea{min-height:80px}
 .kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}.kpi b{font-size:28px;display:block}.kpi span{font-size:12px;color:var(--mut)}
 .bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.bar i{display:block;height:14px;border-radius:4px;background:var(--pri);min-width:2px}.bar em{width:110px;font-style:normal;flex-shrink:0}
 .chips{display:flex;gap:6px;overflow:auto;padding-bottom:6px;margin-bottom:6px}.chips button{white-space:nowrap;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:20px;padding:6px 12px;cursor:pointer}.chips button.on{background:var(--pri);color:#fff}
+.segt{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 14px}.segt th{text-align:left;color:var(--mut);font-weight:600;font-size:11px}.segt td,.segt th{padding:4px 6px;border-bottom:1px solid var(--bd)}.segt .c{text-align:center}.sb{height:7px;background:var(--bd);border-radius:4px;margin:2px 0;overflow:hidden}.sb i{display:block;height:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.opts2{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px;border-radius:12px}.opt2{border:2px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 16px;font-weight:600;font-size:15px;cursor:pointer;min-width:64px}.opt2.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .tl{border-left:2px solid var(--bd);margin-left:6px;padding-left:12px}.tl div{margin:6px 0;font-size:13px}
 .hide{display:none}img.ph{max-width:100%;border-radius:8px;margin-top:6px}
 .toast{position:fixed;top:64px;left:12px;right:12px;background:#1f3a5f;color:#fff;border-radius:10px;padding:12px;z-index:9}
@@ -90,11 +92,11 @@ function setLogo(f){if(!f)return;const r=new FileReader();r.onload=e=>{const i=n
 function render(){
  $('#clv').innerHTML=S.logoCliente?`<img src="${S.logoCliente}">`:'+ Logo cliente';$('#cl').classList.toggle('has',!!S.logoCliente);
  if(!S.user.nombre&&view!=='cfg'){view='cfg'}
- const r=S.user.rol;$('#sub').textContent=S.user.nombre?`${S.user.nombre} · ${S.user.area||'Sin área'}${r!=='tecnico'?' ★'+r:''}${S.user.planta?' · '+S.user.planta:''}`:'Configura tu perfil';
- const navs=r==='gerencia'?NAVS.supervisor.filter(n=>['dash','rep','list','cfg'].includes(n[0])):NAVS[r]||NAVS.tecnico;
+ const r=S.user.rol;$('#sub').textContent=S.user.nombre?`${S.user.nombre} · ${S.user.area||'Sin área'}${r!=='tecnico'?' ★'+r:''}${S.user.planta?' · '+empresaNom(S.user.planta):''}`:'Configura tu perfil';
+ let navs=r==='gerencia'?NAVS.supervisor.filter(n=>['dash','rep','list','cfg'].includes(n[0])):NAVS[r]||NAVS.tecnico;if(S.user.admin&&S.url&&!navs.some(n=>n[0]==='adm'))navs=navs.concat([['adm','🏢','Clientes']]);
  $('#nav').innerHTML=navs.map(n=>`<button class="${view===n[0]?'on':''}" onclick="go('${n[0]}')"><span>${n[1]}</span>${n[2]}</button>`).join('');
  const un=S.notifs.filter(n=>!n.leida&&(n.para===r||n.para==='todos')).length;const nb=$('#nb');nb.textContent=un;nb.classList.toggle('hide',!un);
- const f={list:vList,new:vForm,det:vDet,pend:vPend,dash:vDash,rep:vRep,notif:vNotif,cfg:vCfg}[view];$('#app').innerHTML=f();
+ const f={list:vList,new:vForm,det:vDet,pend:vPend,dash:vDash,rep:vRep,notif:vNotif,cfg:vCfg,adm:vAdm}[view];$('#app').innerHTML=f();
  if(view==='dash')drawDash();
 }
 // ===== Lista =====
@@ -103,13 +105,16 @@ function vList(){
  let L=S.sacs.slice().reverse();
  if(S.user.rol==='tecnico'&&S.user.nombre)L=L.filter(s=>s.de===S.user.nombre||(S.user.email&&s.email===S.user.email)||s.para===S.user.nombre||s.tecnico===S.user.nombre);
  if(filtro==='Vencidas')L=L.filter(vencida);else if(filtro!=='Todas')L=L.filter(s=>s.estado===filtro);
- return `<div class="chips">${est.map(e=>`<button class="${filtro===e?'on':''}" onclick="filtro='${e}';render()">${e}</button>`).join('')}</div>`+
+ const pc=S.sacs.filter(s=>s.estado==='Cerrada'&&!s.solConf&&isSol(s));
+ return (pc.length?`<div class="card" style="border-left:4px solid var(--acc,#e8702a)"><b>Esperan tu conformidad (${pc.length})</b><div class="meta">Toca cada SAC para confirmar que el trabajo quedó bien.</div></div>`+pc.map(card).join(''):'')+`<div class="chips">${est.map(e=>`<button class="${filtro===e?'on':''}" onclick="filtro='${e}';render()">${e}</button>`).join('')}</div>`+
  (L.length?L.map(card).join(''):'<div class="card meta">No hay SAC. Toca ➕ para crear la primera.</div>');
 }
 function card(s){return `<div class="card item p${s.prioridad}" onclick="go('det','${s.id}')"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3>${s.id} · ${esc(s.equipo)}</h3><span class="tag s-${s.estado}" style="height:fit-content">${s.estado}</span></div>
 <div>${esc(s.descripcion).slice(0,110)}${s.descripcion.length>110?'…':''}</div>
 <div class="meta">${esc(s.tipo)} · ${esc(s.planta)} · Límite ${s.fechaLimite}${vencida(s)?' · <b style="color:var(--bad)">VENCIDA</b>':''}</div></div>`}
 // ===== Formulario nueva SAC (basado en OS-MANT-01) =====
+function chipsHTML(id,opts,val){return `<input type="hidden" id="${id}" value="${esc(val||'')}"><div class="opts2">${opts.map(o=>`<button type="button" class="opt2${o===val?' on':''}" onclick="pickChip('${id}',this)">${o}</button>`).join('')}</div>`}
+function pickChip(id,b){const h=$('#'+id);h.value=b.textContent;b.parentNode.querySelectorAll('.opt2').forEach(x=>x.classList.toggle('on',x===b));b.parentNode.style.outline='';if(id==='f_rep'){$('#f_repbox').style.display=h.value==='Sí'?'block':'none'}}
 function vForm(){return `<div class="card"><h3 style="margin-top:0">Nueva SAC</h3>
 <label>Planta / Industria</label><input id="f_planta" value="${esc(S.user.planta)}" list="pl"><datalist id="pl">${S.plantas.map(p=>`<option>${esc(p)}`).join('')}</datalist>
 <div class="row"><div><label>De (solicitante)</label><input id="f_de" value="${esc(S.user.nombre)}"></div><div><label>Dpto.</label><input id="f_dpto"></div></div>
@@ -119,7 +124,8 @@ function vForm(){return `<div class="card"><h3 style="margin-top:0">Nueva SAC</h
 <label>Prioridad</label><select id="f_pr">${Object.entries(PRIO).map(([k,v])=>`<option value="${k}" ${k==2?'selected':''}>${v.t}</option>`).join('')}</select>
 <label>Describa el servicio / acción correctiva solicitada</label><textarea id="f_desc"></textarea>
 <label>Fotos de la avería / hallazgo (cámara o galería, hasta 6)</label><input type="file" accept="image/*" multiple id="f_foto">
-<label>¿Requiere repuestos o materiales?</label><select id="f_rep"><option>No</option><option>Sí</option></select>
+<label>¿Requiere repuestos o materiales?</label>${chipsHTML('f_rep',['No','Sí'],'No')}
+<div id="f_repbox" style="display:none"><label>Plazo estimado de llegada del repuesto</label>${chipsHTML('f_replazo',['1-2 días','3-7 días','8-30 días','Mayor a 30 días'],'')}</div>
 <button class="btn acc full" onclick="crear()">Enviar SAC</button></div>`}
 function img1(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas'),k=Math.min(1,1000/Math.max(i.width,i.height));c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.65))};i.onerror=()=>res('');i.src=e.target.result};r.onerror=()=>res('');r.readAsDataURL(file)})}
 async function imgs(files){const o=[];for(const f of [...files].slice(0,6))o.push(await img1(f));return o.filter(Boolean)}
@@ -128,41 +134,64 @@ const gal=a=>FL(a).length?`<div class="gal">${FL(a).map(u=>`<img src="${u}" oncl
 function zoom(u){const d=document.createElement('div');d.className='lb';d.innerHTML=`<img src="${u}">`;d.onclick=()=>d.remove();document.body.appendChild(d)}
 const rh=(t,sub,cls='')=>`<div class="rh ${cls}"><img src="${document.querySelector('header .lg').src}"><div><b>${t}</b><br><span class="meta">${sub}</span></div>${S.logoCliente?`<img src="${S.logoCliente}">`:'<span style="width:44px"></span>'}</div>`;
 function crear(){
- const eq=$('#f_eq').value.trim(),d=$('#f_desc').value.trim();if(!eq||!d)return toast('Completa equipo y descripción');
+ const eq=$('#f_eq').value.trim(),d=$('#f_desc').value.trim();if(!eq||!d)return toast('Completa equipo y descripción');const ciP=cliInfo($('#f_planta').value.trim());if(ciP&&(ciP.bloqueo||ciP.noCrea))return toast(ciP.bloqueo||ciP.noCrea);if($('#f_rep').value==='Sí'&&!$('#f_replazo').value)return toast('Indica el plazo estimado del repuesto');
  imgs($('#f_foto').files).then(foto=>{
   const pr=+$('#f_pr').value;const id='SAC-'+hoy().slice(2).replace(/-/g,'')+'-'+(100+Math.floor(Math.random()*900));const pl=$('#f_planta').value.trim()||'Planta 1';if(!S.plantas.includes(pl))S.plantas.push(pl);
-  S.sacs.push({id,fecha:hoy(),planta:pl,de:$('#f_de').value.trim(),dpto:$('#f_dpto').value.trim(),para:$('#f_para').value.trim(),equipo:eq,tipo:$('#f_tipo').value,prioridad:pr,fechaLimite:addD(hoy(),PRIO[pr].d),descripcion:d,foto,repuestos:$('#f_rep').value==='Sí',fechaSolRep:'',estado:'Abierta',tecnico:'',
+  S.sacs.push({id,fecha:hoy(),planta:pl,de:$('#f_de').value.trim(),dpto:$('#f_dpto').value.trim(),para:$('#f_para').value.trim(),equipo:eq,tipo:$('#f_tipo').value,prioridad:pr,fechaLimite:addD(hoy(),PRIO[pr].d),descripcion:d,foto,repuestos:$('#f_rep').value==='Sí',repPlazo:$('#f_rep').value==='Sí'?$('#f_replazo').value:'',fechaSolRep:'',estado:'Abierta',tecnico:'',
   inicio:'',fin:'',personas:'',hNorm:'',hExtra:'',conforme:'',comentarios:'',verif:null,hist:[{f:new Date().toISOString(),u:S.user.nombre,a:'Creada'}]});
   notif('supervisor',`Nueva ${id} (${PRIO[pr].t.split(' ·')[0]==='1'?'URGENTE':'prioridad '+pr}): ${eq}`,id);S.sacs[S.sacs.length-1].email=S.user.email;enq(S.sacs[S.sacs.length-1]);toast(id+' creada');go('list')})
 }
 // ===== Detalle / avance / cierre =====
 function vDet(){const s=S.sacs.find(x=>x.id===cur);if(!s)return'';const r=S.user.rol;
- let h=`<div class="noprint"><button class="btn ghost" onclick="go('list')">← Volver</button> <button class="btn acc" style="float:right" onclick="print()">📄 Exportar PDF</button></div><div class="card p${s.prioridad}" style="margin-top:8px">${rh('SOLICITUD DE ACCIÓN CORRECTIVA','Orden de servicio · '+esc(s.planta),'pr-only')}<div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 style="margin:0">${s.id}</h3><span class="tag s-${s.estado}">${s.estado}</span></div>
+ let h=`<div class="noprint"><button class="btn ghost" onclick="go('list')">← Volver</button> <button class="btn acc" style="float:right" onclick="print()">📄 Exportar PDF</button></div><div class="card p${s.prioridad}" style="margin-top:8px">${rh('SOLICITUD DE ACCIÓN CORRECTIVA','Orden de servicio · '+esc(empresaNom(s.planta)),'pr-only')}<div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 style="margin:0">${s.id}</h3><span class="tag s-${s.estado}">${s.estado}</span></div>
 <p><b>${esc(s.equipo)}</b> · ${esc(s.tipo)} · ${esc(s.planta)}</p><p>${esc(s.descripcion)}</p>${FL(s.foto).length?`<div class="meta"><b>Evidencia de la avería</b></div>${gal(s.foto)}`:''}
-<div class="meta">De: ${esc(s.de)} (${esc(s.dpto)}) → Para: ${esc(s.para)}<br>Emitida ${s.fecha} · Límite ${s.fechaLimite}${vencida(s)?' <b style="color:var(--bad)">VENCIDA</b>':''}<br>Repuestos: ${s.repuestos?'Sí':'No'}${s.inicio?`<br>Inicio ${s.inicio}`:''}${s.fin?` · Fin ${s.fin}`:''}${s.personas?`<br>${s.personas} pers. · ${s.hNorm||0} h normales + ${s.hExtra||0} h extras = <b>${(+s.hNorm||0)+(+s.hExtra||0)} h</b>`:''}${s.conforme?`<br>Conforme: ${s.conforme}`:''}${s.comentarios?`<br>Comentarios: ${esc(s.comentarios)}`:''}</div>${FL(s.fotoCierre).length?`<div class="meta" style="margin-top:8px"><b>Evidencia de culminación / cierre</b></div>${gal(s.fotoCierre)}`:''}</div>`;
+<div class="meta">De: ${esc(s.de)} (${esc(s.dpto)}) → Para: ${esc(s.para)}<br>Emitida ${s.fecha} · Límite ${s.fechaLimite}${vencida(s)?' <b style="color:var(--bad)">VENCIDA</b>':''}<br>Repuestos: ${s.repuestos?'Sí'+(s.repPlazo?' · plazo '+esc(s.repPlazo):''):'No'}${s.inicio?`<br>Inicio ${s.inicio}`:''}${s.fin?` · Fin ${s.fin}`:''}${s.personas?`<br>${s.personas} pers. · ${s.hNorm||0} h normales + ${s.hExtra||0} h extras = <b>${(+s.hNorm||0)+(+s.hExtra||0)} h</b>`:''}${s.conforme?`<br>Conforme: ${s.conforme}`:''}${s.solConf?`<br>Conformidad del solicitante: <b>${s.solConf}</b> · ${s.solFecha} · ${esc(s.solPor)}${s.solObs?' · '+esc(s.solObs):''}`:''}${s.comentarios?`<br>Comentarios: ${esc(s.comentarios)}`:''}</div>${FL(s.fotoCierre).length?`<div class="meta" style="margin-top:8px"><b>Evidencia de culminación / cierre</b></div>${gal(s.fotoCierre)}`:''}</div>`;
  if(s.estado==='Abierta'||s.estado==='En curso'){
   h+=`<div class="card"><h3 style="margin-top:0">${s.estado==='Abierta'?'Tomar / reportar avance':'Reportar avance o cerrar'}</h3>
-  <label>Técnico responsable</label><input id="d_tec" value="${esc(s.tecnico||S.user.nombre)}">
-  <div class="row"><div><label>Fecha real de inicio</label><input type="date" id="d_ini" value="${s.inicio||hoy()}"></div><div><label>Fecha de terminación</label><input type="date" id="d_fin" value="${s.fin||''}"></div></div>
-  <div class="row"><div><label>Cant. personas</label><input type="number" id="d_per" value="${s.personas}"></div><div><label>Hrs normales</label><input type="number" id="d_hn" value="${s.hNorm}"></div><div><label>Hrs extras</label><input type="number" id="d_he" value="${s.hExtra}"></div></div>
-  <label>Comentarios / avance</label><textarea id="d_com">${esc(s.comentarios)}</textarea>
-  <label>Fotos de evidencia / culminación (cámara o galería, hasta 6)</label><input type="file" accept="image/*" multiple id="d_foto">
-  <label>Servicio ejecutado conforme (para cerrar)</label><select id="d_conf"><option value="">—</option><option>Sí</option><option>No</option></select>
+  <p class="meta"><b>Todos los campos con * son obligatorios.</b> Para cerrar la SAC también: fecha de terminación, foto y conformidad.</p><label>Técnico responsable *</label><input id="d_tec" value="${esc(s.tecnico||S.user.nombre)}">
+  <div class="row"><div><label>Fecha real de inicio *</label><input type="date" id="d_ini" value="${s.inicio||hoy()}"></div><div><label>Fecha de terminación * (para cerrar)</label><input type="date" id="d_fin" value="${s.fin||''}"></div></div>
+  <div class="row"><div><label>Cant. personas *</label><input type="number" id="d_per" value="${s.personas}"></div><div><label>Hrs normales *</label><input type="number" id="d_hn" value="${s.hNorm}"></div><div><label>Hrs extras * (0 si no hubo)</label><input type="number" id="d_he" value="${s.hExtra}"></div></div>
+  <label>Comentarios / avance *</label><textarea id="d_com">${esc(s.comentarios)}</textarea>
+  <label>Fotos de evidencia / culminación (cámara o galería, hasta 6) * (para cerrar)</label><input type="file" accept="image/*" multiple id="d_foto">
+  <label>Servicio ejecutado conforme * (para cerrar)</label>${chipsHTML('d_conf',['Sí','No'],'')}
+  <div id="d_err" class="meta" style="color:var(--bad,#c0392b);font-weight:700;margin-top:8px"></div>
   <div class="row"><button class="btn full" onclick="avance('${s.id}',false)">Guardar avance</button><button class="btn ok full" onclick="avance('${s.id}',true)">Cerrar SAC</button></div></div>`}
- if(s.estado==='Cerrada'&&r!=='tecnico'){h+=`<div class="card"><h3 style="margin-top:0">Verificación del supervisor</h3><p class="meta">Verifica en sitio la ejecución y valida con QC.</p>
+ if(s.estado==='Cerrada'&&!s.solConf&&isSol(s)){h+=`<div class="card"><h3 style="margin-top:0">Conformidad del solicitante</h3><p class="meta">Tú pediste este trabajo. Confirma si lo recibiste conforme. Si no estás conforme, la SAC se reabre.</p><label>Observaciones (obligatorias si no estás conforme)</label><textarea id="sc_obs"></textarea><div class="row"><button class="btn ok full" onclick="conformeSol('${s.id}',true)">✔ Conforme</button><button class="btn bad full" onclick="conformeSol('${s.id}',false)">✖ No conforme (reabrir)</button></div></div>`}
+ if(s.estado==='Cerrada'&&r!=='tecnico'){h+=`<div class="card"><h3 style="margin-top:0">Verificación del supervisor</h3><p class="meta">Verifica en sitio la ejecución y valida con QC.</p>${s.solConf?'':`<p class="meta"><b>Falta la conformidad del solicitante (${esc(s.de)}).</b></p>`}
   <label>Verificado por QC (nombre)</label><input id="v_qc"><label>Observaciones</label><textarea id="v_obs"></textarea>
   <div class="row"><button class="btn ok full" onclick="verif('${s.id}',true)">✔ Verificada y validada QC</button><button class="btn bad full" onclick="verif('${s.id}',false)">✖ Rechazar (reabrir)</button></div></div>`}
  if(s.verif)h+=`<div class="card"><b>Verificación:</b> ${s.verif.ok?'✔ Aprobada':'✖ Rechazada'} · ${s.verif.fecha} · Sup: ${esc(s.verif.sup)} · QC: ${esc(s.verif.qc)}<br>${esc(s.verif.obs)}</div>`;
  h+=`<div class="card"><b>Historial</b><div class="tl">${s.hist.map(e=>`<div>${e.f.slice(0,16).replace('T',' ')} · <b>${esc(e.u)}</b> · ${esc(e.a)}</div>`).join('')}</div></div>`;return h}
-function avance(id,cerrar){const s=S.sacs.find(x=>x.id===id);
+function isSol(s){const em=(S.user.email||'').toLowerCase();return !!((em&&s.email&&String(s.email).toLowerCase()===em)||(!s.email&&S.user.nombre&&s.de===S.user.nombre))}
+function conformeSol(id,ok){const s=S.sacs.find(x=>x.id===id);const obs=$('#sc_obs').value.trim();if(!ok&&!obs)return toast('Explica por qué no estás conforme');
+ Object.assign(s,{solConf:ok?'Sí':'No',solFecha:hoy(),solPor:S.user.nombre,solObs:obs});
+ hist(s,ok?'Conformidad del solicitante: Sí':'Solicitante NO conforme: '+obs);
+ if(ok){notif('supervisor',`${s.id}: el solicitante confirmó su conformidad. Verificar y validar con QC`,s.id);toast('Gracias, conformidad registrada')}
+ else{s.estado='En curso';notif('supervisor',`${s.id}: solicitante NO conforme, reabierta: ${obs}`,s.id);notif('tecnico',`${s.id}: el solicitante NO quedó conforme, reabierta: ${obs}`,s.id);toast('SAC reabierta')}
+ enq(s);go('det',id)}
+function validarAvance(s,cerrar){const v=i=>String($('#'+i).value||'').trim(),falta=[],ids=[];
+ const req=(i,n)=>{if(v(i)===''){falta.push(n);ids.push(i)}};
+ const mk=(i,on)=>{const e=$('#'+i);if(!e)return;const t=e.type==='hidden'?e.nextElementSibling:e;if(t){t.style.borderColor=on?'var(--bad)':'';t.style.outline=on?'2px solid var(--bad)':''}};
+ ['d_tec','d_ini','d_per','d_hn','d_he','d_com','d_fin','d_conf','d_foto'].forEach(i=>mk(i,false));
+ req('d_tec','Técnico responsable');req('d_ini','Fecha de inicio');req('d_per','Cantidad de personas');req('d_hn','Horas normales');req('d_he','Horas extras (poné 0 si no hubo)');req('d_com','Comentarios / avance');
+ if(cerrar){req('d_fin','Fecha de terminación');if(!FL(s.fotoCierre).length&&!$('#d_foto').files.length){falta.push('Foto de evidencia / culminación');ids.push('d_foto')}req('d_conf','Servicio ejecutado conforme')}
+ const bad=(i,n,min)=>{if(v(i)!==''&&(isNaN(+v(i))||+v(i)<min)){falta.push(n);ids.push(i)}};
+ bad('d_per','Cantidad de personas (mínimo 1)',1);bad('d_hn','Horas normales (número desde 0)',0);bad('d_he','Horas extras (número desde 0)',0);
+ if(v('d_ini')&&v('d_fin')&&v('d_fin')<v('d_ini')){falta.push('La fecha de terminación no puede ser anterior al inicio');ids.push('d_fin')}
+ ids.forEach(i=>mk(i,true));
+ const msg=falta.length?'Falta completar: '+falta.join(' · '):'';$('#d_err').textContent=msg;
+ if(msg){toast(msg);const f0=$('#'+ids[0]);const f=f0&&f0.type==='hidden'?f0.nextElementSibling:f0;if(f&&f.scrollIntoView)f.scrollIntoView({block:'center'})}
+ return !msg}
+function avance(id,cerrar){const s=S.sacs.find(x=>x.id===id);const bq=bloqueoDe(s.planta);if(bq)return toast(bq);if(!validarAvance(s,cerrar))return;
  const fin=()=>imgs($('#d_foto').files).then(foto=>{
   Object.assign(s,{tecnico:$('#d_tec').value.trim(),inicio:$('#d_ini').value,fin:$('#d_fin').value,personas:$('#d_per').value,hNorm:$('#d_hn').value,hExtra:$('#d_he').value,comentarios:$('#d_com').value.trim()});
   if(foto.length)s.fotoCierre=FL(s.fotoCierre).concat(foto);
-  if(cerrar){if(!$('#d_conf').value)return toast('Indica si quedó conforme');s.conforme=$('#d_conf').value;if(!s.fin)s.fin=hoy();s.estado='Cerrada';hist(s,'Cerrada por técnico (conforme: '+s.conforme+')');
+  if(cerrar){if(!$('#d_conf').value)return toast('Indica si quedó conforme');s.conforme=$('#d_conf').value;if(!s.fin)s.fin=hoy();s.estado='Cerrada';s.solConf='';s.solFecha='';s.solPor='';s.solObs='';hist(s,'Cerrada por técnico (conforme: '+s.conforme+')');
    notif('supervisor',`${s.id} CERRADA por ${s.tecnico||S.user.nombre}: verificar en sitio y validar con QC`,s.id);toast('SAC cerrada. Se avisó al supervisor');}
   else{s.estado='En curso';hist(s,'Avance: '+(s.comentarios||'sin comentario').slice(0,80));toast('Avance guardado')}
   enq(s);go('det',id)});fin()}
-function verif(id,ok){const s=S.sacs.find(x=>x.id===id);const qc=$('#v_qc').value.trim();if(ok&&!qc)return toast('Indica quién de QC valida');
+function verif(id,ok){const s=S.sacs.find(x=>x.id===id);const bq=bloqueoDe(s.planta);if(bq)return toast(bq);const qc=$('#v_qc').value.trim();if(ok&&!qc)return toast('Indica quién de QC valida');
+ if(ok&&s.solConf!=='Sí'){if(!S.user.admin)return toast('Falta la conformidad del solicitante');if(!confirm('El solicitante ('+s.de+') aún no confirmó su conformidad. ¿Verificar de todos modos?'))return;hist(s,'Verificada SIN conformidad del solicitante (autorizó '+S.user.nombre+')')}
  s.verif={ok,sup:S.user.nombre,qc,obs:$('#v_obs').value.trim(),fecha:hoy()};s.estado=ok?'Verificada':'En curso';s.hist.push({f:new Date().toISOString(),u:S.user.nombre,a:ok?'Verificada con QC: '+qc:'Rechazada: '+s.verif.obs});
  notif('tecnico',ok?`${s.id} verificada ✔`:`${s.id} RECHAZADA, reabierta: ${s.verif.obs}`,s.id);enq(s);go('pend')}
 function hist(s,a){s.hist.push({f:new Date().toISOString(),u:S.user.nombre,a})}
@@ -243,7 +272,7 @@ function aging(){const T=hoy(),op=S.sacs.filter(s=>s.estado==='Abierta'||s.estad
  return B.map(b=>`<div class="bar"><em>${b.t}</em><i style="width:${b.n/mx*55}%;background:${b.c}"></i><b>${b.n}</b></div>`).join('')}
 function vDash(){const s=stats(),cl=S.sacs.filter(isC),ot=cl.length?Math.round(cl.filter(x=>x.fin&&x.fin<=x.fechaLimite).length/cl.length*100):0,cumpl=S.sacs.length?Math.round((s.verif+s.porVerif)/S.sacs.length*100):0;
  const k=(n,t,c)=>`<div class="kpi"><b ${c?`style="color:${c}"`:''}>${n}</b><span>${t}</span></div>`;
- return `${rh('DASHBOARD DE SAC','Solicitudes de Acciones Correctivas · '+hoy())}<div class="noprint" style="text-align:right;margin-bottom:8px"><button class="btn ghost" onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Pantalla completa</button> <button class="btn acc" onclick="print()">📄 Exportar PDF</button></div>
+ return `${rh('DASHBOARD DE SAC',esc(empresaNom(S.user.planta))+(S.user.planta?' · ':'')+hoy())}<div class="noprint" style="text-align:right;margin-bottom:8px"><button class="btn ghost" onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Pantalla completa</button> <button class="btn acc" onclick="print()">📄 Exportar PDF</button></div>
  <div class="kpis">${k(s.total,'SAC totales')}${k(s.abiertas,'Abiertas','var(--bad)')}${k(s.curso,'En curso','var(--warn)')}${k(s.porVerif,'Por verificar','#3b82c4')}${k(s.verif,'Verificadas','var(--ok)')}${k(s.venc,'Vencidas','var(--bad)')}${k(cumpl+'%','Cierre global')}${k(ot+'%','Cerradas en plazo',ot>=80?'var(--ok)':ot>=60?'var(--warn)':'var(--bad)')}${k(s.prom,'Días prom. cierre')}${k(s.horas,'Horas invertidas')}</div>
  <div class="card"><div class="ct"><b>Avance de SAC · 3 meses · semanas del mes · semana en curso (Lun–Dom)</b><span>Un solo gráfico · la semana en curso se actualiza sola</span></div>${chartUnified()}</div>
  <div class="row"><div class="card"><div class="ct"><b>Estado actual</b></div>${donut()}</div><div class="card"><div class="ct"><b>Antigüedad de pendientes</b></div>${aging()}</div></div>
@@ -257,16 +286,25 @@ async function reporteAhora(){const b=$('#ra_b');b.disabled=true;b.textContent='
 let wk=hoy();
 function vRep(){const b=wk,a=addD(b,-6);const R=repData(a,b);
  return `${adminCard()}<div class="card noprint"><label>Semana que termina el</label><input type="date" value="${b}" onchange="wk=this.value;render()"><div class="row" style="margin-top:8px"><button class="btn" onclick="print()">🖨 Imprimir / PDF</button><button class="btn acc" onclick="copyRep()">📋 Copiar texto</button><button class="btn ok" onclick="open('https://wa.me/?text='+encodeURIComponent(repText()))">WhatsApp</button></div></div>
- <div class="card"><div class="rh"><img src="${document.querySelector('header .lg').src}"><div><b>REPORTE SEMANAL DE SAC</b><br><span class="meta">Solicitudes de Acciones Correctivas</span></div>${S.logoCliente?`<img src="${S.logoCliente}">`:'<span class="meta" style="width:44px"></span>'}</div><div class="meta">Semana del ${a} al ${b}${S.user.planta?' · '+esc(S.user.planta):''}</div>
+ <div class="card"><div class="rh"><img src="${document.querySelector('header .lg').src}"><div><b>REPORTE SEMANAL DE SAC</b><br><span class="meta">Solicitudes de Acciones Correctivas</span></div>${S.logoCliente?`<img src="${S.logoCliente}">`:'<span class="meta" style="width:44px"></span>'}</div><div class="meta">Semana del ${a} al ${b}${S.user.planta?' · '+esc(empresaNom(S.user.planta)):''}</div>
  <div class="kpis" style="margin-top:10px"><div class="kpi"><b>${R.nuevas.length}</b><span>Nuevas</span></div><div class="kpi"><b>${R.cerradas.length}</b><span>Cerradas</span></div><div class="kpi"><b>${R.verif.length}</b><span>Verificadas</span></div><div class="kpi"><b style="color:var(--bad)">${R.venc.length}</b><span>Vencidas</span></div></div>
  <p>Backlog actual: <b>${S.sacs.filter(s=>s.estado==='Abierta'||s.estado==='En curso').length}</b> abiertas/en curso · <b>${S.sacs.filter(s=>s.estado==='Cerrada').length}</b> por verificar · Horas de la semana: <b>${R.horas}</b></p>
  <b>Nuevas por tipo</b>${bars(count(R.nuevas,'tipo'))}<b>Nuevas por planta</b>${bars(count(R.nuevas,'planta'))}
- <p><b>Cerradas esta semana</b></p>${list(R.cerradas)}<p><b>⚠ Vencidas / críticas</b></p>${list(R.venc)}</div>`}
+ <p><b>Cerradas esta semana</b></p>${list(R.cerradas)}<p><b>⚠ Vencidas / críticas</b></p>${list(R.venc)}</div>${segHTML(seg(b))}`}
+function seg(ref){const Sx=S.sacs,cnt=(f,a,b)=>Sx.filter(s=>{const v=f(s);return v&&v>=a&&v<=b}).length;
+ const ym0=ref.slice(0,7),cm=monOf(ref);
+ const mo=[-2,-1,0].map(n=>addM(ym0,n)).map(ym=>({l:MES[+ym.slice(5)-1].toUpperCase()+' '+ym.slice(2,4),n:cnt(s=>s.fecha,ym+'-01',ym+'-31'),c:cnt(cd,ym+'-01',ym+'-31')}));
+ let w0=monOf(ym0+'-01');if(w0<ym0+'-01')w0=addD(w0,7);const wk=[];for(let w=w0;w.slice(0,7)===ym0;w=addD(w,7))wk.push({l:'Sem '+(wk.length+1)+' · '+ddmm(w)+'–'+ddmm(addD(w,6)),fut:w>ref,n:cnt(s=>s.fecha,w,addD(w,6)),c:cnt(cd,w,addD(w,6))});
+ const days=[0,1,2,3,4,5,6].map(i=>{const d=addD(cm,i);return{l:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][i]+' '+ddmm(d),fut:d>ref,n:cnt(s=>s.fecha,d,d),c:cnt(cd,d,d)}});
+ return{mo,wk,days,mes:MES[+ym0.slice(5)-1]}}
+function segHTML(d){const t=(tit,rows)=>{const mx=Math.max(1,...rows.map(r=>Math.max(r.n,r.c)));
+  return `<b>${tit}</b><table class="segt"><tr><th>Período</th><th class="c">Total</th><th class="c">Cerradas</th><th class="c">% cierre</th><th style="width:36%"></th></tr>${rows.map(r=>`<tr style="${r.fut?'opacity:.4':''}"><td>${r.l}</td><td class="c"><b>${r.fut?'–':r.n}</b></td><td class="c"><b>${r.fut?'–':r.c}</b></td><td class="c">${r.fut||!r.n?'–':Math.round(r.c/r.n*100)+'%'}</td><td>${r.fut?'':`<div class="sb"><i style="width:${r.n/mx*100}%;background:var(--acc)"></i></div><div class="sb"><i style="width:${r.c/mx*100}%;background:var(--ok)"></i></div>`}</td></tr>`).join('')}</table>`};
+ return `<div class="card"><h3 style="margin-top:0">Seguimiento de SAC</h3><div class="meta" style="margin-bottom:8px">Total = SAC emitidas en el período · Cerradas = SAC cerradas en el período. Los días se consolidan en la semana y las semanas en el mes; solo se muestran los últimos 3 meses.</div>${t('Últimos 3 meses',d.mo)}${t('Semanas de '+d.mes+' ('+d.wk.length+')',d.wk)}${t('Semana en curso · Lun–Dom',d.days)}</div>`}
 function list(L){return L.length?'<ul>'+L.map(s=>`<li>${s.id} · ${esc(s.equipo)} (${esc(s.planta)}) — ${s.estado}, límite ${s.fechaLimite}</li>`).join('')+'</ul>':'<div class="meta">Ninguna</div>'}
 function repData(a,b){const cerradas=S.sacs.filter(s=>s.fin&&s.fin>=a&&s.fin<=b&&(s.estado==='Cerrada'||s.estado==='Verificada'));
  return{nuevas:S.sacs.filter(s=>s.fecha>=a&&s.fecha<=b),cerradas,verif:S.sacs.filter(s=>s.verif&&s.verif.ok&&s.verif.fecha>=a&&s.verif.fecha<=b),venc:S.sacs.filter(vencida),horas:cerradas.reduce((x,s)=>x+(+s.hNorm||0)+(+s.hExtra||0),0)}}
 function repText(){const b=wk,a=addD(b,-6),R=repData(a,b);const l=L=>L.map(s=>`• ${s.id} ${s.equipo} (${s.planta})`).join('\n')||'• Ninguna';
- return `REPORTE SEMANAL SAC ${a} al ${b}\nNuevas: ${R.nuevas.length} | Cerradas: ${R.cerradas.length} | Verificadas: ${R.verif.length} | Vencidas: ${R.venc.length}\nHoras: ${R.horas}\n\nCerradas:\n${l(R.cerradas)}\n\nVencidas:\n${l(R.venc)}`}
+ return `REPORTE SEMANAL SAC ${a} al ${b}\nNuevas: ${R.nuevas.length} | Cerradas: ${R.cerradas.length} | Verificadas: ${R.verif.length} | Vencidas: ${R.venc.length}\nHoras: ${R.horas}\n\n${(d=>'SEGUIMIENTO (total/cerradas)\n3 meses: '+d.mo.map(m=>m.l+' '+m.n+'/'+m.c).join(' · ')+'\nSemanas de '+d.mes+': '+d.wk.filter(w=>!w.fut).map(w=>w.l.split(' · ')[0]+' '+w.n+'/'+w.c).join(' · ')+'\nSemana en curso: '+d.days.filter(x=>!x.fut).map(x=>x.l.split(' ')[0]+' '+x.n+'/'+x.c).join(' · '))(seg(b))}\n\nCerradas:\n${l(R.cerradas)}\n\nVencidas:\n${l(R.venc)}`}
 function copyRep(){navigator.clipboard.writeText(repText()).then(()=>toast('Copiado'))}
 // ===== Perfil =====
 function vCfg(){const u=S.user;return `<div class="card"><h3 style="margin-top:0">Perfil</h3><label>Nombre</label><input id="c_n" value="${esc(u.nombre)}"><label>Correo (para recibir avisos)</label><input id="c_e" type="email" value="${esc(u.email)}"><label>Rol</label><select id="c_a"><option value="">— elige —</option>${AREAS.map(a=>`<option ${u.area===a?'selected':''}>${a}</option>`).join('')}</select>
@@ -286,16 +324,43 @@ function demo(){let sd=7;const rnd=()=>(sd=(sd*9301+49297)%233280)/233280;const 
   let est='Abierta',fin='';if(r<.72){fin=addD(f,Math.max(0,Math.round(rnd()*PRIO[pr].d*1.3)));if(fin>T){fin='';est='En curso'}else est=rnd()<.7?'Verificada':'Cerrada'}else if(r<.84)est='En curso';
   S.sacs.push({id:'SAC-D'+String(i+1).padStart(3,'0'),fecha:f,planta:S.plantas[i%2],de:'Calidad',email:'',dpto:'QC',para:'Mantenimiento',equipo:e,tipo:tipos[Math.floor(rnd()*5)],prioridad:pr,fechaLimite:lim,descripcion:'Hallazgo reportado en '+e,foto:[],fotoCierre:[],repuestos:rnd()<.3,estado:est,tecnico:'Téc. Demo',inicio:est==='Abierta'?'':f,fin,personas:2,hNorm:2+Math.floor(rnd()*6),hExtra:Math.floor(rnd()*3),conforme:fin?'Sí':'',comentarios:'',verif:est==='Verificada'?{ok:true,sup:'Sup. Demo',qc:'QC Demo',obs:'OK',fecha:fin}:null,hist:[{f:f+'T08:00',u:'Demo',a:'Creada'}]})}
  save();go('dash')}
+// ===== Clientes y acuerdos (administrador) =====
+const cliInfo=p=>(S.cli||[]).find(c=>c.cliente===p)||null;
+const bloqueoDe=p=>{const c=cliInfo(p);return c?c.bloqueo||'':''};
+const empresaNom=p=>{const c=cliInfo(p);return (c&&c.empresa)||p||''};
+const val=id=>($(id)||{value:''}).value.trim();
+function cfgForm(c,i){const id=k=>k+i,chip=c?(!c.activo?'<span class="chip" style="background:var(--bad)">Inhabilitado</span>':(c.desde&&c.desde>hoy()?'<span class="chip" style="background:var(--warn)">Desde '+c.desde+'</span>':'<span class="chip" style="background:var(--ok)">Activo</span>')):'';
+ return `<div class="card"${c&&!c.activo?' style="opacity:.85"':''}><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 style="margin:0">${c?esc(c.cliente):'➕ Nuevo cliente'}</h3>${chip}</div>
+ ${c?'':`<label>Nombre del cliente / planta (como lo elegirán los técnicos)</label><input id="${id('cn')}">`}
+ <label>Nombre de la empresa (sale en encabezados y reportes)</label><input id="${id('ce')}" value="${esc(c?c.empresa:'')}">
+ <label>Quién genera las solicitudes (nombres o correos separados por coma; vacío = cualquiera)</label><textarea id="${id('cs')}" style="min-height:56px">${esc(c?c.solicitantes:'')}</textarea>
+ <label>Herramienta habilitada desde</label><input type="date" id="${id('cd')}" value="${c?c.desde:''}">
+ <label>Correo(s) del supervisor</label><input id="${id('cv')}" value="${esc(c?c.supervisorEmail:'')}">
+ <label>Correo(s) de QC</label><input id="${id('cq')}" value="${esc(c?c.qcEmail:'')}">
+ <label>Correo(s) del reporte semanal</label><input id="${id('cr')}" value="${esc(c?c.reporteEmails:'')}">
+ <div class="row"><button class="btn full" onclick="saveCli(${c?i:-1})">Guardar</button>${c&&S.user.dueno?`<button class="btn ${c.activo?'bad':'ok'} full" onclick="toggleCli(${i})">${c.activo?'⛔ Inhabilitar':'✅ Habilitar'}</button>`:''}</div></div>`}
+const vAdm=()=>S.user.admin?`<h3>Clientes y acuerdos</h3><div class="meta" style="margin-bottom:8px">Configura cada cliente: empresa, quién genera solicitudes y desde cuándo se habilita la herramienta.${S.user.dueno?' «Inhabilitar» cancela las operaciones de un cliente sin acuerdo vigente.':''}</div>${(S.cfg||[]).map((c,i)=>cfgForm(c,i)).join('')}${cfgForm(null,-1)}`:'';
+async function saveCli(i){const c=i>=0?S.cfg[i]:null,id=k=>'#'+k+i,cliente=c?c.cliente:val(id('cn'));if(!cliente)return toast('Escribe el nombre del cliente');
+ try{const r=await api({action:'cfgCliente',email:S.user.email,cliente,data:{empresa:val(id('ce')),solicitantes:val(id('cs')),habilitadoDesde:val(id('cd')),supervisorEmail:val(id('cv')),qcEmail:val(id('cq')),reporteEmails:val(id('cr'))}});if(r.error)return toast(r.error);toast('Guardado');await pull();render()}catch(e){toast('No se pudo guardar')}}
+async function toggleCli(i){const c=S.cfg[i];if(!confirm(c.activo?'¿Inhabilitar a '+c.cliente+'? Se bloquean nuevas solicitudes, avances y cierres, y se suspenden avisos y reportes.':'¿Habilitar de nuevo a '+c.cliente+'?'))return;
+ try{const r=await api({action:'estadoCliente',email:S.user.email,cliente:c.cliente,activo:!c.activo});if(r.error)return toast(r.error);toast(c.activo?'Cliente inhabilitado':'Cliente habilitado');await pull();render()}catch(e){toast('No se pudo cambiar el estado')}}
 // ===== Sincronización con Google (Apps Script) =====
 const api=p=>fetch(S.url,{method:'POST',body:JSON.stringify(p),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());
 function enq(s){S.queue=(S.queue||[]).filter(o=>o.sac.id!==s.id);S.queue.push({action:'upsert',sac:JSON.parse(JSON.stringify(s))});save();render();flush()}
 let busy=false;
-async function flush(){if(!S.url||busy||!navigator.onLine)return;busy=true;try{while(S.queue.length){const r=await api(S.queue[0]);if(r.error)throw r.error;S.queue.shift();save()}await pull()}catch(e){console.warn('sync',e)}busy=false}
-async function pull(){if(!S.url)return;try{const r=await fetch(S.url+'?email='+encodeURIComponent(S.user.email||'')).then(x=>x.json());if(!r.ok)return;
+async function flush(){if(!S.url||busy||!navigator.onLine)return;busy=true;try{while(S.queue.length){const r=await api(S.queue[0]);if(r.error){if(r.bloqueado){toast(r.error);S.queue.shift();save();continue}throw r.error}S.queue.shift();save()}await pull()}catch(e){console.warn('sync',e)}busy=false}
+function syncAvisos(){S.nseen=S.nseen||{};const rec=d=>d&&d>=addD(hoy(),-7);const gest=!!(S.user.admin||S.user.rol==='supervisor'||S.user.rol==='gerencia');
+ const add=(k,msg,id)=>{if(S.nseen[k])return;S.nseen[k]=1;notif('todos',msg,id)};
+ S.sacs.forEach(s=>{
+  if(s.estado==='Cerrada'&&!s.solConf&&rec(s.fin)){
+   if(isSol(s))add(s.id+'|cierre|'+s.fin,`${s.id} cerrada (${s.equipo}): confirma si quedó conforme el servicio`,s.id);
+   else if(gest)add(s.id+'|gest|'+s.fin,`${s.id} cerrada por ${s.tecnico||'el técnico'} (conforme: ${s.conforme||'-'}). Falta la conformidad de ${s.de}`,s.id)}
+  if(s.solConf&&rec(s.solFecha)&&gest)add(s.id+'|sol|'+s.solFecha+s.solConf,`${s.id}: ${s.de} ${s.solConf==='Sí'?'dio su CONFORMIDAD':'NO está conforme'}${s.solObs?' · '+s.solObs:''}`,s.id)})}
+async function pull(){if(!S.url)return;try{const r=await fetch(S.url+'?email='+encodeURIComponent(S.user.email||'')+'&nombre='+encodeURIComponent(S.user.nombre||'')).then(x=>x.json());if(!r.ok)return;
  const pend=new Set((S.queue||[]).map(o=>o.sac.id));const loc=S.sacs.filter(s=>pend.has(s.id));S.sacs=r.sacs.filter(s=>!pend.has(s.id)).concat(loc);
- S.user.rol=r.nivel;S.user.admin=!!r.admin;if(S.user.area==='Gerencia'&&S.user.rol==='tecnico')S.user.rol='gerencia';r.clientes.forEach(c=>{if(!S.plantas.includes(c.cliente))S.plantas.push(c.cliente);if(c.cliente===S.user.planta&&c.logo)S.logoCliente=c.logo});
+ S.user.rol=r.nivel;S.user.admin=!!r.admin;if(S.user.area==='Gerencia'&&S.user.rol==='tecnico')S.user.rol='gerencia';r.clientes.forEach(c=>{if(!S.plantas.includes(c.cliente))S.plantas.push(c.cliente);if(c.cliente===S.user.planta&&c.logo)S.logoCliente=c.logo});S.cli=r.clientes;S.cfg=r.cfg||[];S.user.dueno=!!r.dueno;
  if(!r.logoLT){const lt=document.querySelector('header .lg').src;if(lt.startsWith('data:'))api({action:'logoLT',data:lt})}
- save();if(view!=='cfg')render()}catch(e){console.warn('pull',e)}}
+ syncAvisos();save();const ae=document.activeElement;if(view!=='cfg'&&view!=='new'&&view!=='adm'&&!(ae&&ae.matches&&ae.matches('input,textarea,select')))render()}catch(e){console.warn('pull',e)}}
 /*auto-dash*/setInterval(()=>{if(view==='dash')render()},60000);addEventListener('online',flush);setInterval(()=>S.url&&(S.queue.length?flush():pull()),60000);
 if(location.hash.length>4){setTimeout(()=>{if(S.sacs.find(s=>s.id===location.hash.slice(1)))go('det',location.hash.slice(1))},1500)}
 // ===== Arranque =====
