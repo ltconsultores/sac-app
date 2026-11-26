@@ -73,6 +73,8 @@ const AREAS=['Mantenimiento','QC','Operaciones','Seguridad','Administración','G
 const TIPOS=['Electricidad','Mecánica','Refrigeración','Civil','Otros Servicios'];
 const PRIO={1:{t:'1 · Urgente (1-2 días)',d:2},2:{t:'2 · Normal (3-15 días)',d:15},3:{t:'3 · Programable (16-60 días)',d:60}};
 const K='sac_v1';
+// Interruptor: false = no se pueden generar SAC nuevas (poner true para reactivar)
+const SAC_NUEVAS=false;
 const SERVER='https://script.google.com/macros/s/AKfycbwQe6bv-fOp31vdA8A9voOchim8LtE0E9se9UvTVEEen12hw_FleZVQcdY3HY5zF-6a/exec';
 let S=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s){if(!s.url)s.url=SERVER;if(!s.queue)s.queue=[];return s}}catch(e){}return{user:{nombre:'',email:'',area:'',rol:'tecnico',planta:''},url:SERVER,queue:[],plantas:['Planta 1'],sacs:[],notifs:[],seq:0}}
@@ -115,7 +117,7 @@ function card(s){return `<div class="card item p${s.prioridad}" onclick="go('det
 // ===== Formulario nueva SAC (basado en OS-MANT-01) =====
 function chipsHTML(id,opts,val){return `<input type="hidden" id="${id}" value="${esc(val||'')}"><div class="opts2">${opts.map(o=>`<button type="button" class="opt2${o===val?' on':''}" onclick="pickChip('${id}',this)">${o}</button>`).join('')}</div>`}
 function pickChip(id,b){const h=$('#'+id);h.value=b.textContent;b.parentNode.querySelectorAll('.opt2').forEach(x=>x.classList.toggle('on',x===b));b.parentNode.style.outline='';if(id==='f_rep'){$('#f_repbox').style.display=h.value==='Sí'?'block':'none'}}
-function vForm(){return `<div class="card"><h3 style="margin-top:0">Nueva SAC</h3>
+function vForm(){if(!SAC_NUEVAS)return '<div class="card"><h3 style="margin-top:0">⏸ Generación de SAC en pausa</h3><p>Por ahora no se pueden crear solicitudes nuevas. Las SAC ya registradas se pueden consultar, avanzar y cerrar.</p></div>';return `<div class="card"><h3 style="margin-top:0">Nueva SAC</h3>
 <label>Planta / Industria</label><input id="f_planta" value="${esc(S.user.planta)}" list="pl"><datalist id="pl">${S.plantas.map(p=>`<option>${esc(p)}`).join('')}</datalist>
 <div class="row"><div><label>De (solicitante)</label><input id="f_de" value="${esc(S.user.nombre)}"></div><div><label>Dpto.</label><input id="f_dpto"></div></div>
 <label>Para (responsable)</label><input id="f_para" placeholder="Mantenimiento / nombre">
@@ -133,7 +135,7 @@ const FL=x=>Array.isArray(x)?x:(x?[x]:[]);
 const gal=a=>FL(a).length?`<div class="gal">${FL(a).map(u=>`<img src="${u}" onclick="zoom(this.src)">`).join('')}</div>`:'';
 function zoom(u){const d=document.createElement('div');d.className='lb';d.innerHTML=`<img src="${u}">`;d.onclick=()=>d.remove();document.body.appendChild(d)}
 const rh=(t,sub,cls='')=>`<div class="rh ${cls}"><img src="${document.querySelector('header .lg').src}"><div><b>${t}</b><br><span class="meta">${sub}</span></div>${S.logoCliente?`<img src="${S.logoCliente}">`:'<span style="width:44px"></span>'}</div>`;
-function crear(){
+function crear(){if(!SAC_NUEVAS)return toast('La generación de SAC está en pausa');
  const eq=$('#f_eq').value.trim(),d=$('#f_desc').value.trim();if(!eq||!d)return toast('Completa equipo y descripción');const ciP=cliInfo($('#f_planta').value.trim());if(ciP&&(ciP.bloqueo||ciP.noCrea))return toast(ciP.bloqueo||ciP.noCrea);if($('#f_rep').value==='Sí'&&!$('#f_replazo').value)return toast('Indica el plazo estimado del repuesto');
  imgs($('#f_foto').files).then(foto=>{
   const pr=+$('#f_pr').value;const id='SAC-'+hoy().slice(2).replace(/-/g,'')+'-'+(100+Math.floor(Math.random()*900));const pl=$('#f_planta').value.trim()||'Planta 1';if(!S.plantas.includes(pl))S.plantas.push(pl);
